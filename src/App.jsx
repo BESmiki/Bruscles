@@ -58,6 +58,30 @@ function StatsView({ history }) {
 
   const total = Object.values(counts).reduce((a, b) => a + b, 0) || 1;
 
+  // Calculate exercise frequency and total weight
+  const exerciseStats = {};
+  for (const session of history) {
+    for (const tab of TABS) {
+      const exs = session.data[tab] || [];
+      for (const ex of exs) {
+        if (ex.exercise && ex.rows) {
+          if (!exerciseStats[ex.exercise]) {
+            exerciseStats[ex.exercise] = { count: 0, totalWeight: 0, category: tab };
+          }
+          exerciseStats[ex.exercise].count++;
+          for (const row of ex.rows) {
+            if (row.weight) {
+              exerciseStats[ex.exercise].totalWeight += parseFloat(row.weight) * (parseFloat(row.reps) || 1);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  const mostFrequent = Object.entries(exerciseStats).sort((a, b) => b[1].count - a[1].count)[0];
+  const mostWeight = Object.entries(exerciseStats).sort((a, b) => b[1].totalWeight - a[1].totalWeight)[0];
+
   return (
     <div>
       <h2 className="text-center text-[#888] text-base font-bold mb-5">
@@ -81,6 +105,33 @@ function StatsView({ history }) {
           </div>
         );
       })}
+
+      {/* Exercise Highlights Section */}
+      {(mostFrequent || mostWeight) && (
+        <div className="mt-8 pt-6 border-t border-[#e0dbd6]">
+          <h3 className="text-center text-[#888] text-base font-bold mb-5">Exercise Highlights</h3>
+          <div className="flex flex-col gap-4">
+            {mostFrequent && (
+              <div className="bg-[#f5f5f5] rounded-xl p-4 border border-[#e0dbd6]">
+                <div className="text-[12px] font-bold text-[#999] uppercase tracking-[0.5px] mb-2">
+                  🔥 Most Frequently Used
+                </div>
+                <div className="text-lg font-bold text-[#555]">{mostFrequent[0]}</div>
+                <div className="text-sm text-[#999] mt-1">{mostFrequent[1].count} times</div>
+              </div>
+            )}
+            {mostWeight && (
+              <div className="bg-[#f5f5f5] rounded-xl p-4 border border-[#e0dbd6]">
+                <div className="text-[12px] font-bold text-[#999] uppercase tracking-[0.5px] mb-2">
+                  💪 Most Total Weight
+                </div>
+                <div className="text-lg font-bold text-[#555]">{mostWeight[0]}</div>
+                <div className="text-sm text-[#999] mt-1">{mostWeight[1].totalWeight.toFixed(0)} kg·reps</div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -111,7 +162,14 @@ export default function App() {
   const updateEntry = (idx, field, val) => {
     setEntries(prev => {
       const tab = [...prev[activeTab]];
-      tab[idx] = { ...tab[idx], [field]: val, rows: field === "exercise" ? [emptySet()] : tab[idx].rows };
+      let rows = tab[idx].rows;
+      if (field === "exercise" && val) {
+        const lastStats = getLastStats(history, val);
+        rows = lastStats ? lastStats.rows : [emptySet()];
+      } else if (field === "exercise") {
+        rows = [emptySet()];
+      }
+      tab[idx] = { ...tab[idx], [field]: val, rows };
       return { ...prev, [activeTab]: tab };
     });
   };
@@ -186,8 +244,8 @@ export default function App() {
         {/* SECTION: Header & Stopwatch */}
 
         <div data-name="Header-Section" className="text-center mb-4">
-          <img src="assets/kanbare-removebg.png" className="block mx-auto mb-2 w-24" alt="Logo" />
-          {/* <h1 className="text-[26px] font-bold text-[#555] m-0">Bruscles Tracker</h1> */}
+          <img src="assets/tajikarao.png" className="block mx-auto w-24" alt="Logo" />
+          {/* <h1 className="text-[18px] font-bold text-[#555] m-0">Ame-no-Tajikarao Trainer</h1> */}
           <div data-name="Stopwatch-Display" className={`text-[72px] font-bold ${c.text} tracking-[2px] tabular-nums transition-colors duration-[900ms] ease-in-out`}>
             {String(Math.floor(elapsed / 60)).padStart(2, "0")}:{String(elapsed % 60).padStart(2, "0")}
           </div>
@@ -205,7 +263,7 @@ export default function App() {
 
         {/* SECTION: Logging View */}
         {view === "log" && (
-          <div data-name="Workout-Log-View">
+          <div data-name="Workout-Log-View" className="animate-fade-in">
             
             {/* Subsection: Push/Pull/Legs/Cardio Selector */}
             <div data-name="Category-Tabs" className="flex gap-1.5 mb-4">
@@ -224,12 +282,12 @@ export default function App() {
               {entries[activeTab].map((entry, eIdx) => {
                 const lastStats = entry.exercise ? getLastStats(history, entry.exercise) : null;
                 return (
-                  <div data-name="Exercise-Card" key={eIdx} className={`${c.light} border-[1.5px] ${c.border} rounded-2xl p-4 transition-all duration-500 ease-in-out`}>
+                  <div data-name="Exercise-Card" key={eIdx} className={`${c.light} border-[1.5px] ${c.border} rounded-2xl p-4 transition-all duration-500 ease-in-out animate-fade-in`}>
                     
                     {/* Exercise Header & Dropdown */}
                     <div data-name="Exercise-Selector-Row" className="flex items-center gap-2 mb-2.5">
                       <span className={`${c.bg} ${c.text} rounded-[20px] py-0.5 px-2.5 font-bold text-xs`}>#{eIdx + 1}</span>
-                      <select value={entry.exercise} onChange={e => updateEntry(eIdx, "exercise", e.target.value)} className={`flex-1 py-2 px-3 rounded-lg border-[1.5px] ${c.border} bg-white text-[#555] text-[13px] font-semibold cursor-pointer outline-none`}>
+                      <select value={entry.exercise} onChange={e => updateEntry(eIdx, "exercise", e.target.value)} className={`flex-1 py-2 px-3 text-center rounded-lg border-[1.5px] ${c.border} bg-white text-[#555] text-[13px] font-semibold cursor-pointer outline-none`}>
                         <option value="">— Select Exercise —</option>
                         {EXERCISES[activeTab].map(ex => <option key={ex} value={ex}>{ex}</option>)}
                       </select>
@@ -264,7 +322,7 @@ export default function App() {
                     {entry.exercise && (
                       <div data-name="Sets-Input-Container">
                         {entry.rows.map((row, rIdx) => (
-                          <div data-name="Single-Set-Row" key={rIdx} className={`mb-3 pb-3 border-b border-solid ${c.border}`}>
+                          <div data-name="Single-Set-Row" key={rIdx} className={`mb-3 pb-3 border-b border-solid ${c.border} animate-fade-in`}>
                             <div className="flex items-center gap-3 mb-2">
                               <span className="text-xs text-[#bbb] font-semibold w-5">Set {rIdx + 1}</span>
                               <div data-name="Input-Controls-Wrapper" className="flex-1">
@@ -291,12 +349,12 @@ export default function App() {
                                 {/* red reset button */}
                                     {/* <button onClick={() => { updateRow(eIdx, rIdx, "weight", ""); updateRow(eIdx, rIdx, "reps", ""); }} className="bg-[#FA502F] border-[1.5px] border-red-500 text-white rounded-lg py-1.5 px-3 text-xs font-bold cursor-pointer">Reset</button> */}
                               </div>
-                              {/* <button onClick={() => removeSet(eIdx, rIdx)} className="bg-transparent border-none cursor-pointer text-[#ddd] text-lg flex-none self-start">✕</button> */}
+                              <button onClick={() => removeSet(eIdx, rIdx)} className="bg-transparent border-none cursor-pointer text-[#ddd] text-lg flex-none self-start">✕</button>
                             </div>
                           </div>
                         ))}
                         <button data-name="Add-Set-Button" onClick={() => addSet(eIdx)} className={`mt-1.5 w-full p-[7px] rounded-lg border-[1.5px] border-dashed ${c.border} bg-transparent ${c.text} text-xs font-semibold cursor-pointer`}>
-                          + Add Set
+                          + Another Set 💪
                         </button>
                       </div>
                     )}
@@ -308,11 +366,11 @@ export default function App() {
             {/* Subsection: Global Log Actions */}
             <div data-name="Logging-Actions">
               <button onClick={addExercise} className={`mt-3 w-full p-3 rounded-xl border-2 border-dashed ${c.border} bg-transparent ${c.text} text-sm font-bold cursor-pointer transition-all duration-[900ms]`}>
-                + Add Exercise
+                + Add Exercise 🏋️
               </button>
 
               <button onClick={saveSession} className={`mt-3 w-full p-[13px] rounded-xl border-none text-white text-[15px] font-bold cursor-pointer transition-colors duration-300 ${saved ? "bg-[#a8d8a8]" : "bg-[#b0c4de]"}`}>
-                {saved ? "✅ Session Saved!" : "💾 Save Session"}
+                {saved ? "✅ Session Saved!" : "Save Session 💾"}
               </button>
             </div>
           </div>
@@ -320,7 +378,7 @@ export default function App() {
 
         {/* SECTION: History View */}
         {view === "history" && (
-          <div data-name="Workout-History-View">
+          <div data-name="Workout-History-View" className="animate-fade-in">
             {history.length === 0 ? (
               <div data-name="Empty-History-State" className="text-center text-[#bbb] mt-[60px] text-[15px]">
                 <p>No sessions saved yet.</p>
@@ -328,7 +386,7 @@ export default function App() {
               </div>
             ) : (
               history.map(session => (
-                <div data-name="History-Session-Card" key={session.id} className="bg-white border-[1.5px] border-[#ede9e5] rounded-2xl p-4 mb-3.5">
+                <div data-name="History-Session-Card" key={session.id} className="bg-white border-[1.5px] border-[#ede9e5] rounded-2xl p-4 mb-3.5 animate-fade-in">
                   <div data-name="History-Header" className="flex justify-between items-center mb-3">
                     <span className="font-bold text-[#666] text-sm">📅 {formatDate(session.date)}</span>
                     <button onClick={() => deleteSession(session.id)} className="bg-transparent border-none cursor-pointer text-[#ddd] text-sm">🗑</button>
@@ -363,7 +421,7 @@ export default function App() {
 
         {/* SECTION: Stats View */}
         {view === "stats" && (
-          <div data-name="Workout-Stats-View">
+          <div data-name="Workout-Stats-View" className="animate-fade-in">
             <StatsView history={history} />
           </div>
         )}
