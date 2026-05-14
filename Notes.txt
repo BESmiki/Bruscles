@@ -1,0 +1,3 @@
+to launch the development server:
+Best option: run npm start (creates a full dev server with hot reload)
+Alternative: Run npm run build once Node is installed, then use Live Server on the build folder (but no hot reload)
