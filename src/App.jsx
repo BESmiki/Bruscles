@@ -3,15 +3,16 @@ import { useState, useEffect } from "react";
 const EXERCISES = {
   Push: ["Shoulder Press", "Incline Dumbbell Press", "Lateral Raises", "Chest Fly", "Dips", "Tricep Pushdown"],
   Pull: ["Pull Ups", "Lat Pulldown", "Seated Cable Row", "45° Bicep Curls", "Preacher Curls"],
-  Legs: ["Romanian Deadlift", "Squats", "Leg Press", "Leg Extensions", "Hamstring Curls", "Adductors", "Crunches" ],
+  Legs: ["Romanian Deadlift", "Squats", "Leg Press", "Leg Extensions", "Hamstring Curls", "Adductors", "Crunches"],
   Cardio: ["Running", "Cycling"],
 };
 
+// Refactored to map to Tailwind utility classes instead of raw hex values
 const COLORS = {
-  Push:   { bg: "#fde8e8", border: "#f5b8b8", accent: "#e87878", light: "#fff5f5" },
-  Pull:   { bg: "#e8f0fd", border: "#b8cef5", accent: "#7899e8", light: "#f5f8ff" },
-  Legs:   { bg: "#e8fde8", border: "#b8f0b8", accent: "#78c878", light: "#f5fff5" },
-  Cardio: { bg: "#fdf5e8", border: "#f5ddb8", accent: "#e8a850", light: "#fffaf5" },
+  Push:   { bg: "bg-[#fde8e8]", border: "border-[#f5b8b8]", borderAccent: "border-[#e87878]", text: "text-[#e87878]", fill: "bg-[#e87878]", light: "bg-[#fff5f5]" },
+  Pull:   { bg: "bg-[#e8f0fd]", border: "border-[#b8cef5]", borderAccent: "border-[#7899e8]", text: "text-[#7899e8]", fill: "bg-[#7899e8]", light: "bg-[#f5f8ff]" },
+  Legs:   { bg: "bg-[#e8fde8]", border: "border-[#b8f0b8]", borderAccent: "border-[#78c878]", text: "text-[#78c878]", fill: "bg-[#78c878]", light: "bg-[#f5fff5]" },
+  Cardio: { bg: "bg-[#fdf5e8]", border: "border-[#f5ddb8]", borderAccent: "border-[#e8a850]", text: "text-[#e8a850]", fill: "bg-[#e8a850]", light: "bg-[#fffaf5]" },
 };
 
 const TABS = ["Push", "Pull", "Legs", "Cardio"];
@@ -44,9 +45,9 @@ function getLastStats(history, exercise) {
 
 function StatsView({ history }) {
   if (history.length === 0) return (
-    <div style={{ textAlign: "center", color: "#bbb", marginTop: 60, fontSize: 15 }}>
+    <div className="text-center text-[#bbb] mt-[60px] text-[15px]">
       <p>No sessions yet.</p>
-      <p style={{ fontSize: 13 }}>Log some workouts to see your stats!</p>
+      <p className="text-[13px]">Log some workouts to see your stats!</p>
     </div>
   );
 
@@ -59,20 +60,23 @@ function StatsView({ history }) {
 
   return (
     <div>
-      <h2 style={{ textAlign: "center", color: "#888", fontSize: 16, fontWeight: 700, marginBottom: 20 }}>
+      <h2 className="text-center text-[#888] text-base font-bold mb-5">
         Workout Breakdown · {history.length} session{history.length !== 1 ? "s" : ""}
       </h2>
       {TABS.map(tab => {
         const pct = Math.round((counts[tab] / total) * 100);
         const col = COLORS[tab];
         return (
-          <div key={tab} style={{ marginBottom: 18 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-              <span style={{ fontWeight: 700, color: col.accent, fontSize: 14 }}>{tab}</span>
-              <span style={{ fontWeight: 700, color: "#aaa", fontSize: 14 }}>{pct}% <span style={{ fontWeight: 400, fontSize: 12 }}>({counts[tab]} session{counts[tab] !== 1 ? "s" : ""})</span></span>
+          <div key={tab} className="mb-[18px]">
+            <div className="flex justify-between mb-1.5">
+              <span className={`font-bold ${col.text} text-sm`}>{tab}</span>
+              <span className="font-bold text-[#aaa] text-sm">{pct}% <span className="font-normal text-xs">({counts[tab]} session{counts[tab] !== 1 ? "s" : ""})</span></span>
             </div>
-            <div style={{ background: "#ede9e5", borderRadius: 20, height: 18, overflow: "hidden" }}>
-              <div style={{ width: `${pct}%`, background: col.accent, height: "100%", borderRadius: 20, transition: "width 0.6s ease" }} />
+            <div className="bg-[#ede9e5] rounded-[20px] h-[18px] overflow-hidden">
+              <div 
+                className={`h-full rounded-[20px] transition-all duration-600 ease-in-out ${col.fill}`} 
+                style={{ width: `${pct}%` }} 
+              />
             </div>
           </div>
         );
@@ -176,164 +180,172 @@ export default function App() {
   };
 
   return (
-    <div style={{ fontFamily: "'Segoe UI', sans-serif", minHeight: "100vh", background: "#f9f7f4", padding: "20px 12px" }}>
-      <div style={{ maxWidth: 680, margin: "0 auto" }}>
+    <div data-name="App-Container" className="font-sans min-h-screen bg-[#f9f7f4] py-5 px-3">
+      <div data-name="Main-Content-Wrapper" className="max-w-[680px] mx-auto">
 
-        {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: 16 }}>
-          <h1 style={{ fontSize: 26, fontWeight: 700, color: "#555", margin: 0 }}>🏋️ Workout Tracker</h1>
-          <p style={{ color: "#aaa", margin: "4px 0 4px", fontSize: 13 }}>{formatDate(new Date())}</p>
-          <div style={{ fontSize: 28, fontWeight: 700, color: "#b0c4de", letterSpacing: 2, fontVariantNumeric: "tabular-nums" }}>
-            {String(Math.floor(elapsed / 3600)).padStart(2,"0")}:{String(Math.floor((elapsed % 3600) / 60)).padStart(2,"0")}:{String(elapsed % 60).padStart(2,"0")}
+        {/* SECTION: Header & Stopwatch */}
+
+        <div data-name="Header-Section" className="text-center mb-4">
+          <img src="assets/kanbare-removebg.png" className="block mx-auto mb-2 w-24" alt="Logo" />
+          {/* <h1 className="text-[26px] font-bold text-[#555] m-0">Bruscles Tracker</h1> */}
+          <div data-name="Stopwatch-Display" className={`text-[72px] font-bold ${c.text} tracking-[2px] tabular-nums transition-colors duration-[900ms] ease-in-out`}>
+            {String(Math.floor(elapsed / 60)).padStart(2, "0")}:{String(elapsed % 60).padStart(2, "0")}
           </div>
         </div>
+          <p className="text-[#273226] my-1 text-[13px] text-center mb-8">{formatDate(new Date())}</p>
 
-        {/* View Toggle */}
-        <div style={{ display: "flex", gap: 8, marginBottom: 20, justifyContent: "center" }}>
+        {/* SECTION: View Switcher (Log / History / Stats) */}
+        <div data-name="View-Toggle-Navigation" className="flex gap-2 mb-5 justify-center">
           {["log", "history", "stats"].map(v => (
-            <button key={v} onClick={() => setView(v)} style={{
-              padding: "8px 22px", borderRadius: 20, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600,
-              background: view === v ? "#b0c4de" : "#e8e4e0", color: view === v ? "#fff" : "#888", transition: "all 0.2s"
-            }}>{v === "log" ? "📝 Log" : v === "history" ? "📅 History" : "📊 Stats"}</button>
+            <button key={v} onClick={() => setView(v)} className={`px-[22px] py-2 rounded-[20px] border-none cursor-pointer text-[13px] font-semibold transition-all duration-200 ${view === v ? "bg-[#b0c4de] text-white" : "bg-[#e8e4e0] text-[#888]"}`}>
+              {v === "log" ? "📝 Log" : v === "history" ? "📅 History" : "📊 Stats"}
+            </button>
           ))}
         </div>
 
+        {/* SECTION: Logging View */}
         {view === "log" && (
-          <>
-            <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
-              {TABS.map(t => (
-                <button key={t} onClick={() => setActiveTab(t)} style={{
-                  flex: 1, padding: "10px 4px", borderRadius: 12,
-                  border: `2px solid ${activeTab === t ? COLORS[t].accent : "transparent"}`,
-                  background: activeTab === t ? COLORS[t].bg : "#ede9e5",
-                  color: activeTab === t ? COLORS[t].accent : "#999",
-                  cursor: "pointer", fontWeight: 700, fontSize: 13, transition: "all 0.2s"
-                }}>{t}</button>
-              ))}
+          <div data-name="Workout-Log-View">
+            
+            {/* Subsection: Push/Pull/Legs/Cardio Selector */}
+            <div data-name="Category-Tabs" className="flex gap-1.5 mb-4">
+              {TABS.map(t => {
+                const tabC = COLORS[t];
+                return (
+                  <button key={t} onClick={() => setActiveTab(t)} className={`flex-1 py-2.5 px-1 rounded-xl border-2 cursor-pointer font-bold text-[13px] transition-all duration-200 ${activeTab === t ? `${tabC.borderAccent} ${tabC.bg} ${tabC.text}` : "border-transparent bg-[#ede9e5] text-[#999]"}`}>
+                    {t}
+                  </button>
+                );
+              })}
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            {/* Subsection: List of Exercises */}
+            <div data-name="Exercise-List" className="flex flex-col gap-3.5">
               {entries[activeTab].map((entry, eIdx) => {
                 const lastStats = entry.exercise ? getLastStats(history, entry.exercise) : null;
                 return (
-                  <div key={eIdx} style={{ background: c.light, border: `1.5px solid ${c.border}`, borderRadius: 16, padding: 16 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                      <span style={{ background: c.bg, color: c.accent, borderRadius: 20, padding: "2px 10px", fontWeight: 700, fontSize: 12 }}>#{eIdx + 1}</span>
-                      <select value={entry.exercise} onChange={e => updateEntry(eIdx, "exercise", e.target.value)}
-                        style={{ flex: 1, padding: "8px 12px", borderRadius: 10, border: `1.5px solid ${c.border}`, background: "#fff", color: "#555", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                  <div data-name="Exercise-Card" key={eIdx} className={`${c.light} border-[1.5px] ${c.border} rounded-2xl p-4 transition-all duration-500 ease-in-out`}>
+                    
+                    {/* Exercise Header & Dropdown */}
+                    <div data-name="Exercise-Selector-Row" className="flex items-center gap-2 mb-2.5">
+                      <span className={`${c.bg} ${c.text} rounded-[20px] py-0.5 px-2.5 font-bold text-xs`}>#{eIdx + 1}</span>
+                      <select value={entry.exercise} onChange={e => updateEntry(eIdx, "exercise", e.target.value)} className={`flex-1 py-2 px-3 rounded-lg border-[1.5px] ${c.border} bg-white text-[#555] text-[13px] font-semibold cursor-pointer outline-none`}>
                         <option value="">— Select Exercise —</option>
                         {EXERCISES[activeTab].map(ex => <option key={ex} value={ex}>{ex}</option>)}
                       </select>
                       {entries[activeTab].length > 1 && (
-                        <button onClick={() => removeExercise(eIdx)} style={{ background: "none", border: "none", cursor: "pointer", color: "#ccc", fontSize: 18 }}>✕</button>
+                        <button onClick={() => removeExercise(eIdx)} className="bg-transparent border-none cursor-pointer text-[#ccc] text-lg">✕</button>
                       )}
                     </div>
 
+                    {/* Previous Session Reference Stats */}
                     {lastStats && (
-                      <div style={{ background: c.bg, border: `1px dashed ${c.border}`, borderRadius: 10, padding: "8px 12px", marginBottom: 10 }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: c.accent, marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                      <div data-name="Previous-Stats-Box" className={`${c.bg} border border-dashed ${c.border} rounded-lg py-2 px-3 mb-2.5`}>
+                        <div className={`text-[11px] font-bold ${c.text} mb-1 uppercase tracking-[0.5px]`}>
                           📊 Last session · {formatDate(lastStats.date)}
                         </div>
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+                        <div data-name="Previous-Sets-Cloud" className="flex flex-wrap gap-1.5 mb-2">
                           {lastStats.rows.map((r, i) => (
-                            <span key={i} style={{ background: "#fff", color: "#777", borderRadius: 8, padding: "3px 10px", fontSize: 12, border: `1px solid ${c.border}` }}>
+                            <span key={i} className={`bg-white text-[#777] rounded-lg py-[3px] px-2.5 text-xs border-[1px] ${c.border}`}>
                               Set {i + 1}: {r.weight ? `${r.weight}kg` : "—"} × {r.reps ? `${r.reps} reps` : "—"}
                             </span>
                           ))}
                         </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: c.accent, textTransform: "uppercase", letterSpacing: 0.5 }}>🏆 Best Set</span>
-                          <span style={{ background: c.accent, color: "#fff", borderRadius: 8, padding: "3px 12px", fontSize: 12, fontWeight: 700 }}>
+                        <div data-name="Personal-Best-Badge" className="flex items-center gap-2">
+                          <span className={`text-[11px] font-bold ${c.text} uppercase tracking-[0.5px]`}>🏆 Best Set</span>
+                          <span className={`${c.fill} text-white rounded-lg py-[3px] px-3 text-xs font-bold`}>
                             {lastStats.best.weight ? `${lastStats.best.weight}kg` : "—"} × {lastStats.best.reps ? `${lastStats.best.reps} reps` : "—"}
                           </span>
                         </div>
                       </div>
                     )}
 
+                    {/* Current Workout Input Rows */}
                     {entry.exercise && (
-                      <>
+                      <div data-name="Sets-Input-Container">
                         {entry.rows.map((row, rIdx) => (
-                          <div key={rIdx} style={{ marginBottom: 12, paddingBottom: 12, borderBottom: `1px solid ${c.border}` }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
-                              <span style={{ fontSize: 12, color: "#bbb", fontWeight: 600, width: 20 }}>Set {rIdx + 1}</span>
-                              <div style={{ flex: 1 }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                                  <span style={{ fontSize: 12, fontWeight: 600, color: c.accent, width: 50 }}>{activeTab === "Cardio" ? "Distance" : "Weight"}</span>
-                                  <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
-                                    <span style={{ background: "#fff", border: `1.5px solid ${c.border}`, borderRadius: 8, padding: "6px 12px", fontSize: 16, fontWeight: 700, color: "#555", minWidth: "50px", textAlign: "center" }}>{row.weight || "—"} {activeTab === "Cardio" ? "km" : "kg"}</span>
-                                    <button onClick={() => updateRow(eIdx, rIdx, "weight", Math.max(0, (parseFloat(row.weight) || 0) - 1).toString())} style={{ background: c.bg, border: `1.5px solid ${c.border}`, color: c.accent, borderRadius: 8, padding: "6px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>−1</button>
-                                    <button onClick={() => updateRow(eIdx, rIdx, "weight", ((parseFloat(row.weight) || 0) + 1).toString())} style={{ background: c.bg, border: `1.5px solid ${c.border}`, color: c.accent, borderRadius: 8, padding: "6px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>+1</button>
-                                    <button onClick={() => updateRow(eIdx, rIdx, "weight", ((parseFloat(row.weight) || 0) + 5).toString())} style={{ background: c.bg, border: `1.5px solid ${c.border}`, color: c.accent, borderRadius: 8, padding: "6px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>+5</button>
+                          <div data-name="Single-Set-Row" key={rIdx} className={`mb-3 pb-3 border-b border-solid ${c.border}`}>
+                            <div className="flex items-center gap-3 mb-2">
+                              <span className="text-xs text-[#bbb] font-semibold w-5">Set {rIdx + 1}</span>
+                              <div data-name="Input-Controls-Wrapper" className="flex-1">
+                                {/* Weight/Distance Row */}
+                                <div data-name="Weight-Control-Group" className="flex items-center gap-2 mb-2">
+                                  <span className={`text-base font-semibold ${c.text} w-[50px]`}>{activeTab === "Cardio" ? "Distance" : "Weight"}</span>
+                                  <div className="flex items-center gap-2 flex-1">
+                                    <span className={`bg-white border-[1.5px] ${c.border} rounded-lg py-1.5 px-3 text-base font-bold text-[#555] min-w-[50px] text-center`}>{row.weight || "—"} {activeTab === "Cardio" ? "km" : "kg"}</span>
+                                    <button onClick={() => updateRow(eIdx, rIdx, "weight", Math.max(0, (parseFloat(row.weight) || 0) - 1).toString())} className={`${c.bg} border-[1.5px] ${c.border} ${c.text} rounded-lg py-1.5 px-3 text-[13px] font-bold cursor-pointer`}>−1</button>
+                                    <button onClick={() => updateRow(eIdx, rIdx, "weight", ((parseFloat(row.weight) || 0) + 1).toString())} className={`${c.bg} border-[1.5px] ${c.border} ${c.text} rounded-lg py-1.5 px-3 text-[13px] font-bold cursor-pointer`}>+1</button>
+                                    <button onClick={() => updateRow(eIdx, rIdx, "weight", ((parseFloat(row.weight) || 0) + 5).toString())} className={`${c.bg} border-[1.5px] ${c.border} ${c.text} rounded-lg py-1.5 px-3 text-[13px] font-bold cursor-pointer`}>+5</button>
                                   </div>
                                 </div>
-                                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                  <span style={{ fontSize: 12, fontWeight: 600, color: c.accent, width: 50 }}>{activeTab === "Cardio" ? "Time" : "Reps"}</span>
-                                  <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
-                                    <span style={{ background: "#fff", border: `1.5px solid ${c.border}`, borderRadius: 8, padding: "6px 12px", fontSize: 16, fontWeight: 700, color: "#555", minWidth: "50px", textAlign: "center" }}>{row.reps || "—"} {activeTab === "Cardio" ? "min" : ""}</span>
-                                    <button onClick={() => updateRow(eIdx, rIdx, "reps", Math.max(0, (parseFloat(row.reps) || 0) - 1).toString())} style={{ background: c.bg, border: `1.5px solid ${c.border}`, color: c.accent, borderRadius: 8, padding: "6px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>−1</button>
-                                    <button onClick={() => updateRow(eIdx, rIdx, "reps", ((parseFloat(row.reps) || 0) + 1).toString())} style={{ background: c.bg, border: `1.5px solid ${c.border}`, color: c.accent, borderRadius: 8, padding: "6px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>+1</button>
-                                    <button onClick={() => updateRow(eIdx, rIdx, "reps", ((parseFloat(row.reps) || 0) + 5).toString())} style={{ background: c.bg, border: `1.5px solid ${c.border}`, color: c.accent, borderRadius: 8, padding: "6px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>+5</button>
-                                    <button onClick={() => { updateRow(eIdx, rIdx, "weight", ""); updateRow(eIdx, rIdx, "reps", ""); }} style={{ background: "#f0f0f0", border: `1.5px solid #ddd`, color: "#999", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Reset</button>
+                                {/* Reps/Time Row */}
+                                <div data-name="Reps-Control-Group" className="flex items-center gap-2">
+                                  <span className={`text-base font-semibold ${c.text} w-[50px]`}>{activeTab === "Cardio" ? "Time" : "Reps"}</span>
+                                  <div className="flex items-center gap-2 flex-1">
+                                    <span className={`bg-white border-[1.5px] ${c.border} rounded-lg py-1.5 px-3 text-base font-bold text-[#555] min-w-[50px] text-center`}>{row.reps || "—"} {activeTab === "Cardio" ? "min" : ""}</span>
+                                    <button onClick={() => updateRow(eIdx, rIdx, "reps", Math.max(0, (parseFloat(row.reps) || 0) - 1).toString())} className={`${c.bg} border-[1.5px] ${c.border} ${c.text} rounded-lg py-1.5 px-3 text-[13px] font-bold cursor-pointer`}>−1</button>
+                                    <button onClick={() => updateRow(eIdx, rIdx, "reps", ((parseFloat(row.reps) || 0) + 1).toString())} className={`${c.bg} border-[1.5px] ${c.border} ${c.text} rounded-lg py-1.5 px-3 text-[13px] font-bold cursor-pointer`}>+1</button>
+                                    <button onClick={() => updateRow(eIdx, rIdx, "reps", ((parseFloat(row.reps) || 0) + 5).toString())} className={`${c.bg} border-[1.5px] ${c.border} ${c.text} rounded-lg py-1.5 px-3 text-[13px] font-bold cursor-pointer`}>+5</button>
                                   </div>
                                 </div>
+                                {/* red reset button */}
+                                    {/* <button onClick={() => { updateRow(eIdx, rIdx, "weight", ""); updateRow(eIdx, rIdx, "reps", ""); }} className="bg-[#FA502F] border-[1.5px] border-red-500 text-white rounded-lg py-1.5 px-3 text-xs font-bold cursor-pointer">Reset</button> */}
                               </div>
-                              <button onClick={() => removeSet(eIdx, rIdx)} style={{ background: "none", border: "none", cursor: "pointer", color: "#ddd", fontSize: 18, flex: 0, alignSelf: "flex-start" }}>✕</button>
+                              {/* <button onClick={() => removeSet(eIdx, rIdx)} className="bg-transparent border-none cursor-pointer text-[#ddd] text-lg flex-none self-start">✕</button> */}
                             </div>
                           </div>
                         ))}
-                        <button onClick={() => addSet(eIdx)} style={{
-                          marginTop: 6, width: "100%", padding: "7px", borderRadius: 10,
-                          border: `1.5px dashed ${c.border}`, background: "transparent",
-                          color: c.accent, fontSize: 12, fontWeight: 600, cursor: "pointer"
-                        }}>+ Add Set</button>
-                      </>
+                        <button data-name="Add-Set-Button" onClick={() => addSet(eIdx)} className={`mt-1.5 w-full p-[7px] rounded-lg border-[1.5px] border-dashed ${c.border} bg-transparent ${c.text} text-xs font-semibold cursor-pointer`}>
+                          + Add Set
+                        </button>
+                      </div>
                     )}
                   </div>
                 );
               })}
             </div>
 
-            <button onClick={addExercise} style={{
-              marginTop: 12, width: "100%", padding: "12px", borderRadius: 14,
-              border: `2px dashed ${c.border}`, background: "transparent",
-              color: c.accent, fontSize: 14, fontWeight: 700, cursor: "pointer"
-            }}>+ Add Exercise</button>
+            {/* Subsection: Global Log Actions */}
+            <div data-name="Logging-Actions">
+              <button onClick={addExercise} className={`mt-3 w-full p-3 rounded-xl border-2 border-dashed ${c.border} bg-transparent ${c.text} text-sm font-bold cursor-pointer transition-all duration-[900ms]`}>
+                + Add Exercise
+              </button>
 
-            <button onClick={saveSession} style={{
-              marginTop: 12, width: "100%", padding: "13px", borderRadius: 14, border: "none",
-              background: saved ? "#a8d8a8" : "#b0c4de", color: "#fff", fontSize: 15, fontWeight: 700,
-              cursor: "pointer", transition: "background 0.3s"
-            }}>{saved ? "✅ Session Saved!" : "💾 Save Session"}</button>
-          </>
+              <button onClick={saveSession} className={`mt-3 w-full p-[13px] rounded-xl border-none text-white text-[15px] font-bold cursor-pointer transition-colors duration-300 ${saved ? "bg-[#a8d8a8]" : "bg-[#b0c4de]"}`}>
+                {saved ? "✅ Session Saved!" : "💾 Save Session"}
+              </button>
+            </div>
+          </div>
         )}
 
+        {/* SECTION: History View */}
         {view === "history" && (
-          <div>
+          <div data-name="Workout-History-View">
             {history.length === 0 ? (
-              <div style={{ textAlign: "center", color: "#bbb", marginTop: 60, fontSize: 15 }}>
+              <div data-name="Empty-History-State" className="text-center text-[#bbb] mt-[60px] text-[15px]">
                 <p>No sessions saved yet.</p>
-                <p style={{ fontSize: 13 }}>Complete a workout and hit Save Session!</p>
+                <p className="text-[13px]">Complete a workout and hit Save Session!</p>
               </div>
             ) : (
               history.map(session => (
-                <div key={session.id} style={{ background: "#fff", border: "1.5px solid #ede9e5", borderRadius: 16, padding: 16, marginBottom: 14 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                    <span style={{ fontWeight: 700, color: "#666", fontSize: 14 }}>📅 {formatDate(session.date)}</span>
-                    <button onClick={() => deleteSession(session.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#ddd", fontSize: 14 }}>🗑</button>
+                <div data-name="History-Session-Card" key={session.id} className="bg-white border-[1.5px] border-[#ede9e5] rounded-2xl p-4 mb-3.5">
+                  <div data-name="History-Header" className="flex justify-between items-center mb-3">
+                    <span className="font-bold text-[#666] text-sm">📅 {formatDate(session.date)}</span>
+                    <button onClick={() => deleteSession(session.id)} className="bg-transparent border-none cursor-pointer text-[#ddd] text-sm">🗑</button>
                   </div>
                   {TABS.map(tab => {
                     const exs = session.data[tab]?.filter(e => e.exercise) || [];
                     if (!exs.length) return null;
                     const col = COLORS[tab];
                     return (
-                      <div key={tab} style={{ marginBottom: 10 }}>
-                        <div style={{ display: "inline-block", background: col.bg, color: col.accent, borderRadius: 20, padding: "2px 12px", fontSize: 12, fontWeight: 700, marginBottom: 6 }}>{tab}</div>
+                      <div data-name="History-Category-Block" key={tab} className="mb-2.5">
+                        <div className={`inline-block ${col.bg} ${col.text} rounded-[20px] py-0.5 px-3 text-xs font-bold mb-1.5`}>{tab}</div>
                         {exs.map((e, i) => (
-                          <div key={i} style={{ marginLeft: 8, marginBottom: 6 }}>
-                            <div style={{ fontWeight: 600, color: "#666", fontSize: 13 }}>{e.exercise}</div>
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 3 }}>
+                          <div data-name="History-Exercise-Item" key={i} className="ml-2 mb-1.5">
+                            <div className="font-semibold text-[#666] text-base">{e.exercise}</div>
+                            <div data-name="History-Sets-Row" className="flex flex-wrap gap-1.5 mt-[3px]">
                               {e.rows.map((r, ri) => (r.weight || r.reps) ? (
-                                <span key={ri} style={{ background: col.bg, color: col.accent, borderRadius: 8, padding: "3px 10px", fontSize: 12 }}>
+                                <span key={ri} className={`${col.bg} ${col.text} rounded-lg py-[3px] px-2.5 text-sm`}>
                                   Set {ri + 1}: {r.weight ? `${r.weight}kg` : "—"} × {r.reps ? `${r.reps} reps` : "—"}
                                 </span>
                               ) : null)}
@@ -349,7 +361,12 @@ export default function App() {
           </div>
         )}
 
-        {view === "stats" && <StatsView history={history} />}
+        {/* SECTION: Stats View */}
+        {view === "stats" && (
+          <div data-name="Workout-Stats-View">
+            <StatsView history={history} />
+          </div>
+        )}
 
       </div>
     </div>
