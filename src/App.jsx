@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 const EXERCISES = {
   Push: ["Shoulder Press", "Incline Dumbbell Press", "Lateral Raises", "Chest Fly", "Dips", "Tricep Pushdown"],
@@ -143,7 +143,9 @@ export default function App() {
   const [history, setHistory] = useState([]);
   const [saved, setSaved] = useState(false);
   const [elapsed, setElapsed] = useState(0);
+  const [darkMode, setDarkMode] = useState(false);
   const startTime = useState(Date.now())[0];
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     const t = setInterval(() => setElapsed(Math.floor((Date.now() - startTime) / 1000)), 1000);
@@ -237,25 +239,77 @@ export default function App() {
     try { localStorage.setItem("workout_history", JSON.stringify(updated)); } catch {}
   };
 
+  const downloadWorkoutData = () => {
+    const dataStr = JSON.stringify(history, null, 2);
+    const dataBlob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `workout-history-${new Date().toISOString().split("T")[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const uploadWorkoutData = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const importedData = JSON.parse(e.target.result);
+        if (!Array.isArray(importedData)) {
+          alert("Invalid file format. Please upload a valid workout history JSON file.");
+          return;
+        }
+        const merged = [...importedData, ...history];
+        const uniqueMerged = [];
+        const seenIds = new Set();
+        for (const session of merged) {
+          if (!seenIds.has(session.id)) {
+            seenIds.add(session.id);
+            uniqueMerged.push(session);
+          }
+        }
+        setHistory(uniqueMerged);
+        try { localStorage.setItem("workout_history", JSON.stringify(uniqueMerged)); } catch {}
+        alert(`✅ Successfully imported ${importedData.length} workout session(s)!`);
+      } catch (error) {
+        alert("Error reading file. Please make sure it's a valid JSON file.");
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = "";
+  };
+
+  const triggerFileUpload = () => {
+    fileInputRef.current?.click();
+  };
+
   return (
-    <div data-name="App-Container" className="font-sans min-h-screen bg-[#f9f7f4] py-5 px-3">
+    <div data-name="App-Container" className={`font-sans min-h-screen py-5 px-3 transition-colors duration-300 ${darkMode ? "bg-[#1a1a1a]" : "bg-[#f9f7f4]"}`}>
       <div data-name="Main-Content-Wrapper" className="max-w-[680px] mx-auto">
 
         {/* SECTION: Header & Stopwatch */}
 
-        <div data-name="Header-Section" className="text-center mb-4">
+        <div data-name="Header-Section" className="text-center mb-4 relative">
+          <button onClick={() => setDarkMode(!darkMode)} className="absolute top-0 right-0 text-2xl cursor-pointer bg-transparent border-none p-0 hover:opacity-70 transition-opacity">
+            {darkMode ? "🌚" : "🌞"}
+          </button>
           <img src="assets/tajikarao.png" className="block mx-auto w-24" alt="Logo" />
           {/* <h1 className="text-[18px] font-bold text-[#555] m-0">Ame-no-Tajikarao Trainer</h1> */}
-          <div data-name="Stopwatch-Display" className={`text-[72px] font-bold ${c.text} tracking-[2px] tabular-nums transition-colors duration-[900ms] ease-in-out`}>
+          <div data-name="Stopwatch-Display" className={`text-[72px] font-bold ${c.text} tracking-[2px] tabular-nums transition-colors duration-[1000ms] ease-in-out`}>
             {String(Math.floor(elapsed / 60)).padStart(2, "0")}:{String(elapsed % 60).padStart(2, "0")}
           </div>
         </div>
-          <p className="text-[#273226] my-1 text-[13px] text-center mb-8">{formatDate(new Date())}</p>
+          <p className={`my-1 text-[13px] text-center mb-8 transition-colors duration-300 ${darkMode ? "text-[#ccc]" : "text-[#273226]"}`}>{formatDate(new Date())}</p>
 
         {/* SECTION: View Switcher (Log / History / Stats) */}
         <div data-name="View-Toggle-Navigation" className="flex gap-2 mb-5 justify-center">
           {["log", "history", "stats"].map(v => (
-            <button key={v} onClick={() => setView(v)} className={`px-[22px] py-2 rounded-[20px] border-none cursor-pointer text-[13px] font-semibold transition-all duration-200 ${view === v ? "bg-[#b0c4de] text-white" : "bg-[#e8e4e0] text-[#888]"}`}>
+            <button key={v} onClick={() => setView(v)} className={`px-[22px] py-2 rounded-[20px] border-none cursor-pointer text-[13px] font-semibold transition-all duration-200 ${view === v ? "bg-[#b0c4de] text-white" : darkMode ? "bg-[#333] text-[#aaa]" : "bg-[#e8e4e0] text-[#888]"}`}>
               {v === "log" ? "📝 Log" : v === "history" ? "📅 History" : "📊 Stats"}
             </button>
           ))}
@@ -379,17 +433,27 @@ export default function App() {
         {/* SECTION: History View */}
         {view === "history" && (
           <div data-name="Workout-History-View" className="animate-fade-in">
+            {history.length > 0 && (
+              <button onClick={downloadWorkoutData} className="w-full p-[13px] rounded-xl border-none text-white text-[15px] font-bold cursor-pointer transition-colors duration-300 bg-[#98c9a3] mb-2 hover:bg-[#7bb88b]">
+                📥 Download Data (JSON)
+              </button>
+            )}
+            <button onClick={triggerFileUpload} className="w-full p-[13px] rounded-xl border-none text-white text-[15px] font-bold cursor-pointer transition-colors duration-300 bg-[#8ab4d9] mb-4 hover:bg-[#6a94b9]">
+              📤 Upload Data (JSON)
+            </button>
+            <input ref={fileInputRef} type="file" accept=".json" onChange={uploadWorkoutData} className="hidden" />
             {history.length === 0 ? (
-              <div data-name="Empty-History-State" className="text-center text-[#bbb] mt-[60px] text-[15px]">
+              <div data-name="Empty-History-State" className={`text-center mt-[60px] text-[15px] transition-colors duration-300 ${darkMode ? "text-[#666]" : "text-[#bbb]"}`}>
                 <p>No sessions saved yet.</p>
-                <p className="text-[13px]">Complete a workout and hit Save Session!</p>
+                <p className="text-[13px]">Complete a workout and hit Save Session, or upload a backup file!</p>
               </div>
             ) : (
-              history.map(session => (
-                <div data-name="History-Session-Card" key={session.id} className="bg-white border-[1.5px] border-[#ede9e5] rounded-2xl p-4 mb-3.5 animate-fade-in">
+              <>
+                {history.map(session => (
+                <div data-name="History-Session-Card" key={session.id} className={`border-[1.5px] rounded-2xl p-4 mb-3.5 animate-fade-in transition-colors duration-300 ${darkMode ? "bg-[#2a2a2a] border-[#444]" : "bg-white border-[#ede9e5]"}`}>
                   <div data-name="History-Header" className="flex justify-between items-center mb-3">
-                    <span className="font-bold text-[#666] text-sm">📅 {formatDate(session.date)}</span>
-                    <button onClick={() => deleteSession(session.id)} className="bg-transparent border-none cursor-pointer text-[#ddd] text-sm">🗑</button>
+                    <span className={`font-bold text-sm transition-colors duration-300 ${darkMode ? "text-[#bbb]" : "text-[#666]"}`}>📅 {formatDate(session.date)}</span>
+                    <button onClick={() => deleteSession(session.id)} className={`bg-transparent border-none cursor-pointer text-sm transition-colors duration-300 ${darkMode ? "text-[#555]" : "text-[#ddd]"}`}>🗑</button>
                   </div>
                   {TABS.map(tab => {
                     const exs = session.data[tab]?.filter(e => e.exercise) || [];
@@ -400,7 +464,7 @@ export default function App() {
                         <div className={`inline-block ${col.bg} ${col.text} rounded-[20px] py-0.5 px-3 text-xs font-bold mb-1.5`}>{tab}</div>
                         {exs.map((e, i) => (
                           <div data-name="History-Exercise-Item" key={i} className="ml-2 mb-1.5">
-                            <div className="font-semibold text-[#666] text-base">{e.exercise}</div>
+                            <div className={`font-semibold text-base transition-colors duration-300 ${darkMode ? "text-[#ddd]" : "text-[#666]"}`}>{e.exercise}</div>
                             <div data-name="History-Sets-Row" className="flex flex-wrap gap-1.5 mt-[3px]">
                               {e.rows.map((r, ri) => (r.weight || r.reps) ? (
                                 <span key={ri} className={`${col.bg} ${col.text} rounded-lg py-[3px] px-2.5 text-sm`}>
@@ -414,7 +478,8 @@ export default function App() {
                     );
                   })}
                 </div>
-              ))
+              ))}
+              </>
             )}
           </div>
         )}
