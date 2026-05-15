@@ -144,18 +144,58 @@ export default function App() {
   const [saved, setSaved] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [darkMode, setDarkMode] = useState(false);
-  const startTime = useState(Date.now())[0];
+  const [startTime, setStartTime] = useState(Date.now());
+  const [isSticky, setIsSticky] = useState(false);
+  const [customExercises, setCustomExercises] = useState({ Push: [], Pull: [], Legs: [], Cardio: [] });
+  const [deletedExercises, setDeletedExercises] = useState({ Push: [], Pull: [], Legs: [], Cardio: [] });
+  const [showAddExerciseModal, setShowAddExerciseModal] = useState(false);
+  const [newExerciseName, setNewExerciseName] = useState("");
+  const [newExerciseTab, setNewExerciseTab] = useState("Push");
+  const [showDeleteExerciseModal, setShowDeleteExerciseModal] = useState(false);
+  const [deleteExerciseTab, setDeleteExerciseTab] = useState("Push");
   const fileInputRef = useRef(null);
+  const stopwatchRef = useRef(null);
+
+  const resetStopwatch = () => {
+    setStartTime(Date.now());
+    setElapsed(0);
+  };
 
   useEffect(() => {
     const t = setInterval(() => setElapsed(Math.floor((Date.now() - startTime) / 1000)), 1000);
     return () => clearInterval(t);
+  }, [startTime]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(([entry]) => {
+      setIsSticky(!entry.isIntersecting);
+    }, { threshold: 0 });
+
+    if (stopwatchRef.current) {
+      observer.observe(stopwatchRef.current);
+    }
+
+    return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
     try {
       const h = localStorage.getItem("workout_history");
       if (h) setHistory(JSON.parse(h));
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    try {
+      const ce = localStorage.getItem("custom_exercises");
+      if (ce) setCustomExercises(JSON.parse(ce));
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    try {
+      const de = localStorage.getItem("deleted_exercises");
+      if (de) setDeletedExercises(JSON.parse(de));
     } catch {}
   }, []);
 
@@ -217,6 +257,36 @@ export default function App() {
     });
   };
 
+  const addCustomExercise = () => {
+    if (!newExerciseName.trim()) return;
+    const updated = {
+      ...customExercises,
+      [newExerciseTab]: [...(customExercises[newExerciseTab] || []), newExerciseName.trim()]
+    };
+    setCustomExercises(updated);
+    try { localStorage.setItem("custom_exercises", JSON.stringify(updated)); } catch {}
+    setNewExerciseName("");
+    setShowAddExerciseModal(false);
+  };
+
+  const deleteExercise = (exerciseName) => {
+    const updated = {
+      ...deletedExercises,
+      [deleteExerciseTab]: [...(deletedExercises[deleteExerciseTab] || []), exerciseName]
+    };
+    setDeletedExercises(updated);
+    try { localStorage.setItem("deleted_exercises", JSON.stringify(updated)); } catch {}
+  };
+
+  const restoreExercise = (exerciseName) => {
+    const updated = {
+      ...deletedExercises,
+      [deleteExerciseTab]: deletedExercises[deleteExerciseTab].filter(ex => ex !== exerciseName)
+    };
+    setDeletedExercises(updated);
+    try { localStorage.setItem("deleted_exercises", JSON.stringify(updated)); } catch {}
+  };
+
   const saveSession = () => {
     const session = {
       id: Date.now(),
@@ -240,7 +310,7 @@ export default function App() {
   };
 
   const downloadWorkoutData = () => {
-    const dataStr = JSON.stringify(history, null, 2);
+    const dataStr = JSON.stringify({ history, customExercises, deletedExercises }, null, 2);
     const dataBlob = new Blob([dataStr], { type: "application/json" });
     const url = URL.createObjectURL(dataBlob);
     const link = document.createElement("a");
@@ -260,11 +330,20 @@ export default function App() {
     reader.onload = (e) => {
       try {
         const importedData = JSON.parse(e.target.result);
-        if (!Array.isArray(importedData)) {
-          alert("Invalid file format. Please upload a valid workout history JSON file.");
-          return;
+        
+        // Handle old format (array), medium format (history + customExercises), and new format (history + customExercises + deletedExercises)
+        let historyData, customEx, deletedEx;
+        if (Array.isArray(importedData)) {
+          historyData = importedData;
+          customEx = { Push: [], Pull: [], Legs: [], Cardio: [] };
+          deletedEx = { Push: [], Pull: [], Legs: [], Cardio: [] };
+        } else {
+          historyData = importedData.history || [];
+          customEx = importedData.customExercises || { Push: [], Pull: [], Legs: [], Cardio: [] };
+          deletedEx = importedData.deletedExercises || { Push: [], Pull: [], Legs: [], Cardio: [] };
         }
-        const merged = [...importedData, ...history];
+        
+        const merged = [...historyData, ...history];
         const uniqueMerged = [];
         const seenIds = new Set();
         for (const session of merged) {
@@ -273,9 +352,28 @@ export default function App() {
             uniqueMerged.push(session);
           }
         }
+        
+        // Merge custom exercises
+        const mergedCustomEx = { ...customEx };
+        for (const tab of TABS) {
+          mergedCustomEx[tab] = [...new Set([...(customEx[tab] || []), ...(customExercises[tab] || [])])];
+        }
+        
+        // Merge deleted exercises
+        const mergedDeletedEx = { ...deletedEx };
+        for (const tab of TABS) {
+          mergedDeletedEx[tab] = [...new Set([...(deletedEx[tab] || []), ...(deletedExercises[tab] || [])])];
+        }
+        
         setHistory(uniqueMerged);
-        try { localStorage.setItem("workout_history", JSON.stringify(uniqueMerged)); } catch {}
-        alert(`✅ Successfully imported ${importedData.length} workout session(s)!`);
+        setCustomExercises(mergedCustomEx);
+        setDeletedExercises(mergedDeletedEx);
+        try { 
+          localStorage.setItem("workout_history", JSON.stringify(uniqueMerged));
+          localStorage.setItem("custom_exercises", JSON.stringify(mergedCustomEx));
+          localStorage.setItem("deleted_exercises", JSON.stringify(mergedDeletedEx));
+        } catch {}
+        alert(`✅ Successfully imported ${historyData.length} workout session(s)!`);
       } catch (error) {
         alert("Error reading file. Please make sure it's a valid JSON file.");
       }
@@ -294,13 +392,25 @@ export default function App() {
 
         {/* SECTION: Header & Stopwatch */}
 
+        <div ref={stopwatchRef} data-name="Stopwatch-Sentinel" className="h-0 overflow-visible"></div>
+        
+        <div data-name="Sticky-Stopwatch-Wrapper" className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isSticky ? "bg-opacity-95 py-2 shadow-md" : "pointer-events-none"} ${darkMode ? "bg-[#1a1a1a]" : "bg-[#f9f7f4]"}`}>
+          {isSticky && (
+            <div className="max-w-[680px] mx-auto px-3 text-center">
+              <div onClick={resetStopwatch} className={`text-[28px] font-bold ${c.text} tracking-[2px] tabular-nums cursor-pointer hover:opacity-70 transition-opacity`}>
+                {String(Math.floor(elapsed / 60)).padStart(2, "0")}:{String(elapsed % 60).padStart(2, "0")}
+              </div>
+            </div>
+          )}
+        </div>
+
         <div data-name="Header-Section" className="text-center mb-4 relative">
           <button onClick={() => setDarkMode(!darkMode)} className="absolute top-0 right-0 text-2xl cursor-pointer bg-transparent border-none p-0 hover:opacity-70 transition-opacity">
             {darkMode ? "🌚" : "🌞"}
           </button>
           <img src="assets/tajikarao.png" className="block mx-auto w-24" alt="Logo" />
           {/* <h1 className="text-[18px] font-bold text-[#555] m-0">Ame-no-Tajikarao Trainer</h1> */}
-          <div data-name="Stopwatch-Display" className={`text-[72px] font-bold ${c.text} tracking-[2px] tabular-nums transition-colors duration-[1000ms] ease-in-out`}>
+          <div data-name="Stopwatch-Display" onClick={resetStopwatch} className={`text-[72px] font-bold ${c.text} tracking-[2px] tabular-nums transition-colors duration-[1000ms] ease-in-out cursor-pointer hover:opacity-70 transition-opacity`}>
             {String(Math.floor(elapsed / 60)).padStart(2, "0")}:{String(elapsed % 60).padStart(2, "0")}
           </div>
         </div>
@@ -324,7 +434,7 @@ export default function App() {
               {TABS.map(t => {
                 const tabC = COLORS[t];
                 return (
-                  <button key={t} onClick={() => setActiveTab(t)} className={`flex-1 py-2.5 px-1 rounded-xl border-2 cursor-pointer font-bold text-[13px] transition-all duration-200 ${activeTab === t ? `${tabC.borderAccent} ${tabC.bg} ${tabC.text}` : "border-transparent bg-[#ede9e5] text-[#999]"}`}>
+                  <button key={t} onClick={() => setActiveTab(t)} className={`flex-1 py-2.5 px-1 rounded-xl border-2 cursor-pointer font-bold text-[13px] transition-all duration-200 ${activeTab === t ? `${tabC.borderAccent} ${tabC.bg} ${tabC.text}` : darkMode ? "border-transparent bg-[#333] text-[#888]" : "border-transparent bg-[#ede9e5] text-[#999]"}`}>
                     {t}
                   </button>
                 );
@@ -336,17 +446,31 @@ export default function App() {
               {entries[activeTab].map((entry, eIdx) => {
                 const lastStats = entry.exercise ? getLastStats(history, entry.exercise) : null;
                 return (
-                  <div data-name="Exercise-Card" key={eIdx} className={`${c.light} border-[1.5px] ${c.border} rounded-2xl p-4 transition-all duration-500 ease-in-out animate-fade-in`}>
+                  <div data-name="Exercise-Card" key={eIdx} className={`${darkMode ? "bg-[#262626]" : c.light} border-[1.5px] ${c.border} rounded-2xl p-4 transition-all duration-500 ease-in-out animate-fade-in`}>
                     
                     {/* Exercise Header & Dropdown */}
                     <div data-name="Exercise-Selector-Row" className="flex items-center gap-2 mb-2.5">
                       <span className={`${c.bg} ${c.text} rounded-[20px] py-0.5 px-2.5 font-bold text-xs`}>#{eIdx + 1}</span>
-                      <select value={entry.exercise} onChange={e => updateEntry(eIdx, "exercise", e.target.value)} className={`flex-1 py-2 px-3 text-center rounded-lg border-[1.5px] ${c.border} bg-white text-[#555] text-[13px] font-semibold cursor-pointer outline-none`}>
+                      <select value={entry.exercise} onChange={e => {
+                        if (e.target.value === "__ADD_NEW__") {
+                          setNewExerciseTab(activeTab);
+                          setShowAddExerciseModal(true);
+                        } else if (e.target.value === "__DELETE__") {
+                          setDeleteExerciseTab(activeTab);
+                          setShowDeleteExerciseModal(true);
+                        } else {
+                          updateEntry(eIdx, "exercise", e.target.value);
+                        }
+                      }} className={`flex-1 py-2 px-3 text-center rounded-lg border-[1.5px] ${c.border} ${darkMode ? "bg-[#1a1a1a] text-[#ccc]" : "bg-white text-[#555]"} text-[13px] font-semibold cursor-pointer outline-none`}>
                         <option value="">— Select Exercise —</option>
-                        {EXERCISES[activeTab].map(ex => <option key={ex} value={ex}>{ex}</option>)}
+                        {EXERCISES[activeTab].filter(ex => !deletedExercises[activeTab]?.includes(ex)).map(ex => <option key={ex} value={ex}>{ex}</option>)}
+                        {customExercises[activeTab]?.filter(ex => !deletedExercises[activeTab]?.includes(ex)).map(ex => <option key={`custom-${ex}`} value={ex}>{ex}</option>)}
+                        {(EXERCISES[activeTab].length > 0 || customExercises[activeTab]?.length > 0) && <option value="__SEPARATOR__" disabled>────────────</option>}
+                        <option value="__ADD_NEW__">➕ Add New Exercise</option>
+                        <option value="__DELETE__">❌ Delete/Restore Exercise</option>
                       </select>
                       {entries[activeTab].length > 1 && (
-                        <button onClick={() => removeExercise(eIdx)} className="bg-transparent border-none cursor-pointer text-[#ccc] text-lg">✕</button>
+                        <button onClick={() => removeExercise(eIdx)} className="bg-transparent border-none cursor-pointer text-[#f50b0b] text-lg">✕</button>
                       )}
                     </div>
 
@@ -384,7 +508,8 @@ export default function App() {
                                 <div data-name="Weight-Control-Group" className="flex items-center gap-2 mb-2">
                                   <span className={`text-base font-semibold ${c.text} w-[50px]`}>{activeTab === "Cardio" ? "Distance" : "Weight"}</span>
                                   <div className="flex items-center gap-2 flex-1">
-                                    <span className={`bg-white border-[1.5px] ${c.border} rounded-lg py-1.5 px-3 text-base font-bold text-[#555] min-w-[50px] text-center`}>{row.weight || "—"} {activeTab === "Cardio" ? "km" : "kg"}</span>
+                                    {/* {activeTab === "Cardio" ? "km" : "Kg"}<= add KG here to add back to exercise weight placeholder*/}
+                                    <span className={`bg-white border-[1.5px] ${c.border} rounded-lg py-1.5 px-3 text-base font-bold text-[#555] min-w-[50px] text-center`}>{row.weight || "—"} {activeTab === "Cardio" ? "km" : ""}</span>
                                     <button onClick={() => updateRow(eIdx, rIdx, "weight", Math.max(0, (parseFloat(row.weight) || 0) - 1).toString())} className={`${c.bg} border-[1.5px] ${c.border} ${c.text} rounded-lg py-1.5 px-3 text-[13px] font-bold cursor-pointer`}>−1</button>
                                     <button onClick={() => updateRow(eIdx, rIdx, "weight", ((parseFloat(row.weight) || 0) + 1).toString())} className={`${c.bg} border-[1.5px] ${c.border} ${c.text} rounded-lg py-1.5 px-3 text-[13px] font-bold cursor-pointer`}>+1</button>
                                     <button onClick={() => updateRow(eIdx, rIdx, "weight", ((parseFloat(row.weight) || 0) + 5).toString())} className={`${c.bg} border-[1.5px] ${c.border} ${c.text} rounded-lg py-1.5 px-3 text-[13px] font-bold cursor-pointer`}>+5</button>
@@ -420,11 +545,11 @@ export default function App() {
             {/* Subsection: Global Log Actions */}
             <div data-name="Logging-Actions">
               <button onClick={addExercise} className={`mt-3 w-full p-3 rounded-xl border-2 border-dashed ${c.border} bg-transparent ${c.text} text-sm font-bold cursor-pointer transition-all duration-[900ms]`}>
-                + Add Exercise 🏋️
+                + Add Exercise to current workout 🏋️
               </button>
 
               <button onClick={saveSession} className={`mt-3 w-full p-[13px] rounded-xl border-none text-white text-[15px] font-bold cursor-pointer transition-colors duration-300 ${saved ? "bg-[#a8d8a8]" : "bg-[#b0c4de]"}`}>
-                {saved ? "✅ Session Saved!" : "Save Session 💾"}
+                {saved ? "✅ Session Saved!" : "Workout finished 💾"}
               </button>
             </div>
           </div>
@@ -488,6 +613,112 @@ export default function App() {
         {view === "stats" && (
           <div data-name="Workout-Stats-View" className="animate-fade-in">
             <StatsView history={history} />
+          </div>
+        )}
+
+        {/* Add Exercise Modal */}
+        {showAddExerciseModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40">
+            <div className={`${darkMode ? "bg-[#1a1a1a]" : "bg-white"} rounded-2xl p-6 max-w-sm w-full mx-4`}>
+              <h2 className={`text-lg font-bold mb-4 ${darkMode ? "text-[#ccc]" : "text-[#333]"}`}>Add New Exercise</h2>
+              <input
+                type="text"
+                value={newExerciseName}
+                onChange={e => setNewExerciseName(e.target.value)}
+                onKeyPress={e => e.key === "Enter" && addCustomExercise()}
+                placeholder="Exercise name"
+                autoFocus
+                className={`w-full py-2 px-3 rounded-lg border-[1.5px] ${darkMode ? "bg-[#262626] border-[#444] text-[#ccc]" : "bg-white border-[#ddd] text-[#333]"} mb-4 outline-none`}
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setShowAddExerciseModal(false);
+                    setNewExerciseName("");
+                  }}
+                  className={`flex-1 py-2 rounded-lg font-semibold ${darkMode ? "bg-[#333] text-[#aaa]" : "bg-[#e8e4e0] text-[#666]"}`}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={addCustomExercise}
+                  className="flex-1 py-2 rounded-lg font-semibold bg-[#4CAF50] text-white"
+                >
+                  Add
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete/Restore Exercise Modal */}
+        {showDeleteExerciseModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40">
+            <div className={`${darkMode ? "bg-[#1a1a1a]" : "bg-white"} rounded-2xl p-6 max-w-sm w-full mx-4`}>
+              <h2 className={`text-lg font-bold mb-4 ${darkMode ? "text-[#ccc]" : "text-[#333]"}`}>Delete/Restore Exercise</h2>
+              
+              {/* Active Exercises */}
+              {(EXERCISES[deleteExerciseTab]?.length > 0 || customExercises[deleteExerciseTab]?.length > 0) && (
+                <>
+                  <div className={`text-sm font-semibold mb-2 ${darkMode ? "text-[#999]" : "text-[#888]"}`}>Active Exercises</div>
+                  <div className="space-y-2 mb-4 max-h-[200px] overflow-y-auto">
+                    {EXERCISES[deleteExerciseTab]?.filter(ex => !deletedExercises[deleteExerciseTab]?.includes(ex)).map(ex => (
+                      <button
+                        key={ex}
+                        onClick={() => {
+                          deleteExercise(ex);
+                        }}
+                        className={`w-full p-3 rounded-lg text-left font-semibold transition-colors ${darkMode ? "bg-[#262626] hover:bg-[#FA502F] text-[#ccc]" : "bg-[#f5f5f5] hover:bg-[#FA502F] text-[#333]"} hover:text-white`}
+                      >
+                        ❌ {ex}
+                      </button>
+                    ))}
+                    {customExercises[deleteExerciseTab]?.filter(ex => !deletedExercises[deleteExerciseTab]?.includes(ex)).map(ex => (
+                      <button
+                        key={`custom-${ex}`}
+                        onClick={() => {
+                          deleteExercise(ex);
+                        }}
+                        className={`w-full p-3 rounded-lg text-left font-semibold transition-colors ${darkMode ? "bg-[#262626] hover:bg-[#FA502F] text-[#ccc]" : "bg-[#f5f5f5] hover:bg-[#FA502F] text-[#333]"} hover:text-white`}
+                      >
+                        ❌ {ex}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {/* Deleted Exercises */}
+              {deletedExercises[deleteExerciseTab]?.length > 0 && (
+                <>
+                  <div className={`text-sm font-semibold mb-2 ${darkMode ? "text-[#999]" : "text-[#888]"}`}>Deleted Exercises (click to restore)</div>
+                  <div className="space-y-2 mb-4 max-h-[200px] overflow-y-auto">
+                    {deletedExercises[deleteExerciseTab]?.map(ex => (
+                      <button
+                        key={`deleted-${ex}`}
+                        onClick={() => {
+                          restoreExercise(ex);
+                        }}
+                        className={`w-full p-3 rounded-lg text-left font-semibold transition-colors ${darkMode ? "bg-[#333] hover:bg-[#4CAF50] text-[#aaa]" : "bg-[#e8e4e0] hover:bg-[#4CAF50] text-[#666]"} hover:text-white`}
+                      >
+                        ↩️ {ex}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {EXERCISES[deleteExerciseTab]?.length === 0 && customExercises[deleteExerciseTab]?.length === 0 && deletedExercises[deleteExerciseTab]?.length === 0 && (
+                <p className={`mb-4 ${darkMode ? "text-[#aaa]" : "text-[#666]"}`}>No exercises to manage.</p>
+              )}
+
+              <button
+                onClick={() => setShowDeleteExerciseModal(false)}
+                className={`w-full py-2 rounded-lg font-semibold ${darkMode ? "bg-[#333] text-[#aaa]" : "bg-[#e8e4e0] text-[#666]"}`}
+              >
+                Close
+              </button>
+            </div>
           </div>
         )}
 

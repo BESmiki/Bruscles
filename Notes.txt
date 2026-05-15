@@ -1,3 +1,14 @@
 to add:
+
+remove +1 on new set default
+
 more mobile friendly 
+
+add metric in stats that calculates the difference in weight from the lowest to the "best" set and display it as a percentage. 100% being double the original weight.
+
+"last session" in cardio displays in kg/reps instead of km/mins
+
 PWA install button
+
+
+
