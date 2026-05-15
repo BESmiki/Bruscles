@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 
 const EXERCISES = {
-  Push: ["Shoulder Press", "Incline Dumbbell Press", "Lateral Raises", "Chest Fly", "Dips", "Tricep Pushdown"],
-  Pull: ["Pull Ups", "Lat Pulldown", "Seated Cable Row", "45° Bicep Curls", "Preacher Curls"],
-  Legs: ["Romanian Deadlift", "Squats", "Leg Press", "Leg Extensions", "Hamstring Curls", "Adductors", "Crunches"],
+  Push: ["Shoulder Press", "30° Incline Dumbbell Press", "Lateral Raises", "Chest Fly", "Tricep Pushdown"],
+  Pull: ["Pull Ups", "Lat Pulldown", "single Arm Cable Row", "45° Bicep Curls", "Preacher Curls"],
+  Legs: ["RDL", "Back Squats", "Leg Press", "Leg Extensions", "Hamstring Curls", "Adductors", "Calfs", "Crunches"],
   Cardio: ["Running", "Cycling"],
 };
 
@@ -114,19 +114,19 @@ function StatsView({ history }) {
             {mostFrequent && (
               <div className="bg-[#f5f5f5] rounded-xl p-4 border border-[#e0dbd6]">
                 <div className="text-[12px] font-bold text-[#999] uppercase tracking-[0.5px] mb-2">
-                  🔥 Most Frequently Used
+                  🔥 Fav Exercise
                 </div>
                 <div className="text-lg font-bold text-[#555]">{mostFrequent[0]}</div>
-                <div className="text-sm text-[#999] mt-1">{mostFrequent[1].count} times</div>
+                <div className="text-sm text-[#999] mt-1">{mostFrequent[1].count} Sessions</div>
               </div>
             )}
             {mostWeight && (
               <div className="bg-[#f5f5f5] rounded-xl p-4 border border-[#e0dbd6]">
                 <div className="text-[12px] font-bold text-[#999] uppercase tracking-[0.5px] mb-2">
-                  💪 Most Total Weight
+                  💪 Most Total Weight Moved
                 </div>
                 <div className="text-lg font-bold text-[#555]">{mostWeight[0]}</div>
-                <div className="text-sm text-[#999] mt-1">{mostWeight[1].totalWeight.toFixed(0)} kg·reps</div>
+                <div className="text-sm text-[#999] mt-1">{mostWeight[1].totalWeight.toFixed(0)} kg</div>
               </div>
             )}
           </div>
@@ -408,9 +408,9 @@ export default function App() {
           <button onClick={() => setDarkMode(!darkMode)} className="absolute top-0 right-0 text-2xl cursor-pointer bg-transparent border-none p-0 hover:opacity-70 transition-opacity">
             {darkMode ? "🌚" : "🌞"}
           </button>
-          <img src="assets/tajikarao.png" className="block mx-auto w-24" alt="Logo" />
+          <img src="assets/tajikarao.png" className="block mx-auto w-20" alt="Logo" />
           {/* <h1 className="text-[18px] font-bold text-[#555] m-0">Ame-no-Tajikarao Trainer</h1> */}
-          <div data-name="Stopwatch-Display" onClick={resetStopwatch} className={`text-[72px] font-bold ${c.text} tracking-[2px] tabular-nums transition-colors duration-[1000ms] ease-in-out cursor-pointer hover:opacity-70 transition-opacity`}>
+          <div data-name="Stopwatch-Display" onClick={resetStopwatch} className={`text-[72px] font-bold ${c.text} tracking-[2px] tabular-nums duration-[1000ms] ease-in-out cursor-pointer hover:opacity-70 transition-opacity`}>
             {String(Math.floor(elapsed / 60)).padStart(2, "0")}:{String(elapsed % 60).padStart(2, "0")}
           </div>
         </div>
@@ -467,7 +467,7 @@ export default function App() {
                         {customExercises[activeTab]?.filter(ex => !deletedExercises[activeTab]?.includes(ex)).map(ex => <option key={`custom-${ex}`} value={ex}>{ex}</option>)}
                         {(EXERCISES[activeTab].length > 0 || customExercises[activeTab]?.length > 0) && <option value="__SEPARATOR__" disabled>────────────</option>}
                         <option value="__ADD_NEW__">➕ Add New Exercise</option>
-                        <option value="__DELETE__">❌ Delete/Restore Exercise</option>
+                        <option value="__DELETE__">❌ Delete Exercise</option>
                       </select>
                       {entries[activeTab].length > 1 && (
                         <button onClick={() => removeExercise(eIdx)} className="bg-transparent border-none cursor-pointer text-[#f50b0b] text-lg">✕</button>
@@ -528,7 +528,7 @@ export default function App() {
                                 {/* red reset button */}
                                     {/* <button onClick={() => { updateRow(eIdx, rIdx, "weight", ""); updateRow(eIdx, rIdx, "reps", ""); }} className="bg-[#FA502F] border-[1.5px] border-red-500 text-white rounded-lg py-1.5 px-3 text-xs font-bold cursor-pointer">Reset</button> */}
                               </div>
-                              <button onClick={() => removeSet(eIdx, rIdx)} className="bg-transparent border-none cursor-pointer text-[#ddd] text-lg flex-none self-start">✕</button>
+                              <button onClick={() => removeSet(eIdx, rIdx)} className="bg-transparent border-none cursor-pointer text-[#da1010] text-lg flex-none self-start">X</button>
                             </div>
                           </div>
                         ))}
@@ -545,11 +545,11 @@ export default function App() {
             {/* Subsection: Global Log Actions */}
             <div data-name="Logging-Actions">
               <button onClick={addExercise} className={`mt-3 w-full p-3 rounded-xl border-2 border-dashed ${c.border} bg-transparent ${c.text} text-sm font-bold cursor-pointer transition-all duration-[900ms]`}>
-                + Add Exercise to current workout 🏋️
+                ➕ Add Exercise to current workout
               </button>
 
               <button onClick={saveSession} className={`mt-3 w-full p-[13px] rounded-xl border-none text-white text-[15px] font-bold cursor-pointer transition-colors duration-300 ${saved ? "bg-[#a8d8a8]" : "bg-[#b0c4de]"}`}>
-                {saved ? "✅ Session Saved!" : "Workout finished 💾"}
+                {saved ? "✅ Session Saved!" : "💾 Workout finished"}
               </button>
             </div>
           </div>
@@ -560,11 +560,11 @@ export default function App() {
           <div data-name="Workout-History-View" className="animate-fade-in">
             {history.length > 0 && (
               <button onClick={downloadWorkoutData} className="w-full p-[13px] rounded-xl border-none text-white text-[15px] font-bold cursor-pointer transition-colors duration-300 bg-[#98c9a3] mb-2 hover:bg-[#7bb88b]">
-                📥 Download Data (JSON)
+                📩 Download Data
               </button>
             )}
             <button onClick={triggerFileUpload} className="w-full p-[13px] rounded-xl border-none text-white text-[15px] font-bold cursor-pointer transition-colors duration-300 bg-[#8ab4d9] mb-4 hover:bg-[#6a94b9]">
-              📤 Upload Data (JSON)
+              ⬆️ Upload Data
             </button>
             <input ref={fileInputRef} type="file" accept=".json" onChange={uploadWorkoutData} className="hidden" />
             {history.length === 0 ? (
