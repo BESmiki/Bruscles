@@ -413,12 +413,39 @@ export default function App() {
     } catch {}
   }, []);
 
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("total_session_time");
-      if (saved) setTotalSessionTime(parseInt(saved, 10));
-    } catch {}
-  }, []);
+ useEffect(() => {
+  try {
+    const saved = localStorage.getItem("total_session_time");
+    const lastSeen = localStorage.getItem("last_seen_timestamp");
+    const FOUR_HOURS = 4 * 60 * 60 * 1000;
+    
+    if (lastSeen && Date.now() - parseInt(lastSeen) > FOUR_HOURS) {
+      // Been away more than 4 hours, reset
+      localStorage.setItem("total_session_time", "0");
+    } else if (saved) {
+      setTotalSessionTime(parseInt(saved, 10));
+    }
+  } catch {}
+}, []);
+
+useEffect(() => {
+  const handleVisibility = () => {
+    if (document.visibilityState === "visible") {
+      const lastSeen = localStorage.getItem("last_seen_timestamp");
+      const FOUR_HOURS = 4 * 60 * 60 * 1000;
+      if (lastSeen && Date.now() - parseInt(lastSeen) > FOUR_HOURS) {
+        setTotalSessionTime(0);
+        localStorage.setItem("total_session_time", "0");
+      }
+    } else {
+      // Page hidden, save timestamp
+      localStorage.setItem("last_seen_timestamp", String(Date.now()));
+    }
+  };
+
+  document.addEventListener("visibilitychange", handleVisibility);
+  return () => document.removeEventListener("visibilitychange", handleVisibility);
+}, []);
 
   useEffect(() => {
     const t = setInterval(() => {
@@ -544,31 +571,36 @@ export default function App() {
     } catch {}
   };
 
-  const saveSession = () => {
-    const session = {
-      id: Date.now(),
-      date: new Date().toISOString(),
-      data: Object.fromEntries(
-        Object.entries(entries).map(([k, v]) => [
-          k,
-          v.filter((e) => e.exercise),
-        ]),
-      ),
-    };
-    const updated = [session, ...history];
-    setHistory(updated);
-    try {
-      localStorage.setItem("workout_history", JSON.stringify(updated));
-    } catch {}
-    setEntries({
-      Push: [emptyEntry()],
-      Pull: [emptyEntry()],
-      Legs: [emptyEntry()],
-      Cardio: [emptyEntry()],
-    });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+const saveSession = () => {
+  const session = {
+    id: Date.now(),
+    date: new Date().toISOString(),
+    data: Object.fromEntries(
+      Object.entries(entries).map(([k, v]) => [
+        k,
+        v.filter((e) => e.exercise),
+      ]),
+    ),
   };
+  const updated = [session, ...history];
+  setHistory(updated);
+  try {
+    localStorage.setItem("workout_history", JSON.stringify(updated));
+  } catch {}
+  setEntries({
+    Push: [emptyEntry()],
+    Pull: [emptyEntry()],
+    Legs: [emptyEntry()],
+    Cardio: [emptyEntry()],
+  });
+  // Reset session timer
+  setTotalSessionTime(0);
+  setSessionStartTime(Date.now());
+  localStorage.setItem("total_session_time", "0");
+  localStorage.setItem("last_seen_timestamp", String(Date.now()));
+  setSaved(true);
+  setTimeout(() => setSaved(false), 2500);
+};
 
   const deleteSession = (id) => {
     const updated = history.filter((h) => h.id !== id);
@@ -1456,7 +1488,6 @@ export default function App() {
                     value={exerciseSearchQuery}
                     onChange={(e) => setExerciseSearchQuery(e.target.value)}
                     placeholder="Search exercises..."
-                    autoFocus
                     className={`w-full py-2 px-3 rounded-lg border-[1.5px] ${col.border} ${darkMode ? "bg-[#262626] text-[#ccc]" : "bg-[#f9f7f4] text-[#333]"} mb-3 outline-none text-sm`}
                   />
 
