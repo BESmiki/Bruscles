@@ -1,22 +1,14 @@
 to add:
 
-Replace logo for without handles logo
-
-Make overall gym time counter and make image swap out depending on time. 20-45 strong 45+ tired 
-
 remove +1 on new set default
 
 more mobile friendly 
 
-add "most sets" to stats
-
 add "most improved" metric in stats that calculates the difference in weight from the lowest to the "best" set and display it as a percentage. 100% being double the original weight.
-
-"last session" in cardio displays in kg/reps instead of km/mins
 
 PWA install button
 
-Add a "need to do" stat where muscle groups not recorded in 14 days show up on a list
+text-[#ccc],text-[#555] make a variable so i can change color in one location
 
 A Small Developer Note
 Because this calculation happens inside the StatsView component body, it runs every time the component renders.
