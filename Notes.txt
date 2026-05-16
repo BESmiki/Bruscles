@@ -1,5 +1,9 @@
 to add:
 
+Replace logo for without handles logo
+
+Make overall gym time counter and make image swap out depending on time. 20-45 strong 45+ tired 
+
 remove +1 on new set default
 
 more mobile friendly 

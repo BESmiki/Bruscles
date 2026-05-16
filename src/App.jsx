@@ -66,9 +66,10 @@ function StatsView({ history }) {
       for (const ex of exs) {
         if (ex.exercise && ex.rows) {
           if (!exerciseStats[ex.exercise]) {
-            exerciseStats[ex.exercise] = { count: 0, totalWeight: 0, category: tab };
+            exerciseStats[ex.exercise] = { count: 0, totalWeight: 0, totalSets: 0, category: tab };
           }
           exerciseStats[ex.exercise].count++;
+          exerciseStats[ex.exercise].totalSets += ex.rows.length;
           for (const row of ex.rows) {
             if (row.weight) {
               exerciseStats[ex.exercise].totalWeight += parseFloat(row.weight) * (parseFloat(row.reps) || 1);
@@ -81,6 +82,7 @@ function StatsView({ history }) {
 
   const mostFrequent = Object.entries(exerciseStats).sort((a, b) => b[1].count - a[1].count)[0];
   const mostWeight = Object.entries(exerciseStats).sort((a, b) => b[1].totalWeight - a[1].totalWeight)[0];
+  const mostSets = Object.entries(exerciseStats).sort((a, b) => b[1].totalSets - a[1].totalSets)[0];
 
   return (
     <div>
@@ -107,7 +109,7 @@ function StatsView({ history }) {
       })}
 
       {/* Exercise Highlights Section */}
-      {(mostFrequent || mostWeight) && (
+      {(mostFrequent || mostWeight || mostSets) && (
         <div className="mt-8 pt-6 border-t border-[#e0dbd6]">
           <h3 className="text-center text-[#888] text-base font-bold mb-5">Exercise Highlights</h3>
           <div className="flex flex-col gap-4">
@@ -129,6 +131,17 @@ function StatsView({ history }) {
                 <div className="text-sm text-[#999] mt-1">{mostWeight[1].totalWeight.toFixed(0)} kg</div>
               </div>
             )}
+            {mostSets && (
+              <div className="bg-[#f5f5f5] rounded-xl p-4 border border-[#e0dbd6]">
+                <div className="text-[12px] font-bold text-[#999] uppercase tracking-[0.5px] mb-2">
+                  🎯 Most Sets
+                </div>
+                <div className="text-lg font-bold text-[#555]">{mostSets[0]}</div>
+                <div className="text-sm text-[#999] mt-1">{mostSets[1].totalSets} Sets</div>
+              </div>
+            )}
+            {/* ADD footer here for stats page */}
+            <h2 className="test-large text-center m-4 text-red-600">MORE STATS COMING SOON...</h2>
           </div>
         </div>
       )}
@@ -153,6 +166,8 @@ export default function App() {
   const [newExerciseTab, setNewExerciseTab] = useState("Push");
   const [showDeleteExerciseModal, setShowDeleteExerciseModal] = useState(false);
   const [deleteExerciseTab, setDeleteExerciseTab] = useState("Push");
+  const [totalSessionTime, setTotalSessionTime] = useState(0);
+  const [sessionStartTime, setSessionStartTime] = useState(Date.now());
   const fileInputRef = useRef(null);
   const stopwatchRef = useRef(null);
 
@@ -198,6 +213,27 @@ export default function App() {
       if (de) setDeletedExercises(JSON.parse(de));
     } catch {}
   }, []);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("total_session_time");
+      if (saved) setTotalSessionTime(parseInt(saved, 10));
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    const t = setInterval(() => {
+      const currentSessionElapsed = Math.floor((Date.now() - sessionStartTime) / 1000);
+      setTotalSessionTime(prev => {
+        const newTotal = prev + 1;
+        try {
+          localStorage.setItem("total_session_time", String(newTotal));
+        } catch {}
+        return newTotal;
+      });
+    }, 1000);
+    return () => clearInterval(t);
+  }, [sessionStartTime]);
 
   const c = COLORS[activeTab];
 
@@ -408,7 +444,10 @@ export default function App() {
           <button onClick={() => setDarkMode(!darkMode)} className="absolute top-0 right-0 text-2xl cursor-pointer bg-transparent border-none p-0 hover:opacity-70 transition-opacity">
             {darkMode ? "🌚" : "🌞"}
           </button>
-          <img src="assets/tajikarao.png" className="block mx-auto w-20" alt="Logo" />
+          <img src={totalSessionTime >= 2700 ? "assets/tired.png" : totalSessionTime >= 1200 ? "assets/Strong.png" : "assets/tajikarao.png"} className="block mx-auto w-20" alt="Logo" />
+          <div className={`text-[16px] ${darkMode ? "text-[#d7d7d7]" : "text-[#616161]"} mt-1 mb-2 tabular-nums`}>
+            Total: {String(Math.floor(totalSessionTime / 3600)).padStart(2, "0")}:{String(Math.floor((totalSessionTime % 3600) / 60)).padStart(2, "0")}:{String(totalSessionTime % 60).padStart(2, "0")}
+          </div>
           {/* <h1 className="text-[18px] font-bold text-[#555] m-0">Ame-no-Tajikarao Trainer</h1> */}
           <div data-name="Stopwatch-Display" onClick={resetStopwatch} className={`text-[72px] font-bold ${c.text} tracking-[2px] tabular-nums duration-[1000ms] ease-in-out cursor-pointer hover:opacity-70 transition-opacity`}>
             {String(Math.floor(elapsed / 60)).padStart(2, "0")}:{String(elapsed % 60).padStart(2, "0")}
