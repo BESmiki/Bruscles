@@ -84,8 +84,32 @@ function StatsView({ history }) {
   const mostWeight = Object.entries(exerciseStats).sort((a, b) => b[1].totalWeight - a[1].totalWeight)[0];
   const mostSets = Object.entries(exerciseStats).sort((a, b) => b[1].totalSets - a[1].totalSets)[0];
 
+  // Calculate least performed exercises (excluding Cardio)
+  const leastPerformed = Object.entries(exerciseStats)
+    .filter(([_, stats]) => stats.category !== "Cardio")
+    .sort((a, b) => a[1].totalSets - b[1].totalSets)
+    .slice(0, 3);
+
   return (
     <div>
+      {/* Recommended Exercises Section */}
+      {leastPerformed.length > 0 && (
+        <div className="mb-6 pb-6 border-b border-[#e0dbd6]">
+          <h3 className="text-center text-[#888] text-base font-bold mb-4">💡 Recommended Exercises</h3>
+          <div className="flex flex-col gap-3">
+            {leastPerformed.map(([exerciseName, stats]) => (
+              <div key={exerciseName} className={`rounded-xl p-4 border border-[#e0dbd6]`} style={{ backgroundColor: COLORS[stats.category].light }}>
+                <div className="text-[12px] font-bold text-[#888] uppercase tracking-[0.5px] mb-1">
+                  🎯 Recommended Exercise
+                </div>
+                <div className={`text-lg font-bold ${COLORS[stats.category].text}`}>{exerciseName}</div>
+                <div className="text-sm text-[#999] mt-1">{stats.totalSets} set{stats.totalSets !== 1 ? "s" : ""}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <h2 className="text-center text-[#888] text-base font-bold mb-5">
         Workout Breakdown · {history.length} session{history.length !== 1 ? "s" : ""}
       </h2>
@@ -522,14 +546,14 @@ export default function App() {
                         <div data-name="Previous-Sets-Cloud" className="flex flex-wrap gap-1.5 mb-2">
                           {lastStats.rows.map((r, i) => (
                             <span key={i} className={`bg-white text-[#777] rounded-lg py-[3px] px-2.5 text-xs border-[1px] ${c.border}`}>
-                              Set {i + 1}: {r.weight ? `${r.weight}kg` : "—"} × {r.reps ? `${r.reps} reps` : "—"}
+                              Set {i + 1}: {activeTab === "Cardio" ? `${r.weight ? `${r.weight}km` : "—"} · ${r.reps ? `${r.reps} min` : "—"}` : `${r.weight ? `${r.weight}kg` : "—"} × ${r.reps ? `${r.reps} reps` : "—"}`}
                             </span>
                           ))}
                         </div>
                         <div data-name="Personal-Best-Badge" className="flex items-center gap-2">
                           <span className={`text-[11px] font-bold ${c.text} uppercase tracking-[0.5px]`}>🏆 Best Set</span>
                           <span className={`${c.fill} text-white rounded-lg py-[3px] px-3 text-xs font-bold`}>
-                            {lastStats.best.weight ? `${lastStats.best.weight}kg` : "—"} × {lastStats.best.reps ? `${lastStats.best.reps} reps` : "—"}
+                            {activeTab === "Cardio" ? `${lastStats.best.weight ? `${lastStats.best.weight}km` : "—"} · ${lastStats.best.reps ? `${lastStats.best.reps} min` : "—"}` : `${lastStats.best.weight ? `${lastStats.best.weight}kg` : "—"} × ${lastStats.best.reps ? `${lastStats.best.reps} reps` : "—"}`}
                           </span>
                         </div>
                       </div>
@@ -632,7 +656,7 @@ export default function App() {
                             <div data-name="History-Sets-Row" className="flex flex-wrap gap-1.5 mt-[3px]">
                               {e.rows.map((r, ri) => (r.weight || r.reps) ? (
                                 <span key={ri} className={`${col.bg} ${col.text} rounded-lg py-[3px] px-2.5 text-sm`}>
-                                  Set {ri + 1}: {r.weight ? `${r.weight}kg` : "—"} × {r.reps ? `${r.reps} reps` : "—"}
+                                  Set {ri + 1}: {tab === "Cardio" ? `${r.weight ? `${r.weight}km` : "—"} · ${r.reps ? `${r.reps} min` : "—"}` : `${r.weight ? `${r.weight}kg` : "—"} × ${r.reps ? `${r.reps} reps` : "—"}`}
                                 </span>
                               ) : null)}
                             </div>
