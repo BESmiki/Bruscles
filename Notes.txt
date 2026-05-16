@@ -14,3 +14,5 @@ A Small Developer Note
 Because this calculation happens inside the StatsView component body, it runs every time the component renders.
 Current status: With 20–50 sessions, this is lightning fast.
 Future-proofing stats tab: If you eventually have 1,000+ sessions, you might notice a tiny lag when clicking the "Stats" tab. At that point, you'd want to wrap this logic in a useMemo hook so it only recalculates when the history actually changes!
+
+update to vite
