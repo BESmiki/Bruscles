@@ -178,7 +178,7 @@ function StatsView({ history, darkMode }) {
             className={`rounded-xl p-4 border border-[#e0dbd6] ${darkMode ? "bg-[#262626]" : "bg-[#f5f5f5]"}`}
           >
             <div className="text-[12px] font-bold text-[#888] uppercase tracking-[0.5px] mb-3">
-              🎯 Recommended Exercises
+              Recommended Exercises
             </div>
             <div className="flex flex-col gap-2">
               {leastPerformed.map(([exerciseName, stats], i) => (
@@ -354,9 +354,16 @@ export default function App() {
   const [newExerciseTab, setNewExerciseTab] = useState("Push");
   const [showDeleteExerciseModal, setShowDeleteExerciseModal] = useState(false);
   const [expandedSessions, setExpandedSessions] = useState({});
-  const [showLogoText, setShowLogoText] = useState(false);
+  const [showLogoModal, setShowLogoModal] = useState(false);
   const toggleSession = (id) => {
     setExpandedSessions((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+  const switchTab = (tab) => {
+    const scrollY = window.scrollY;
+    setActiveTab(tab);
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: scrollY, behavior: "instant" });
+    });
   };
   const [deleteExerciseTab, setDeleteExerciseTab] = useState("Push");
   const [totalSessionTime, setTotalSessionTime] = useState(0);
@@ -413,39 +420,40 @@ export default function App() {
     } catch {}
   }, []);
 
- useEffect(() => {
-  try {
-    const saved = localStorage.getItem("total_session_time");
-    const lastSeen = localStorage.getItem("last_seen_timestamp");
-    const FOUR_HOURS = 4 * 60 * 60 * 1000;
-    
-    if (lastSeen && Date.now() - parseInt(lastSeen) > FOUR_HOURS) {
-      // Been away more than 4 hours, reset
-      localStorage.setItem("total_session_time", "0");
-    } else if (saved) {
-      setTotalSessionTime(parseInt(saved, 10));
-    }
-  } catch {}
-}, []);
-
-useEffect(() => {
-  const handleVisibility = () => {
-    if (document.visibilityState === "visible") {
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("total_session_time");
       const lastSeen = localStorage.getItem("last_seen_timestamp");
       const FOUR_HOURS = 4 * 60 * 60 * 1000;
-      if (lastSeen && Date.now() - parseInt(lastSeen) > FOUR_HOURS) {
-        setTotalSessionTime(0);
-        localStorage.setItem("total_session_time", "0");
-      }
-    } else {
-      // Page hidden, save timestamp
-      localStorage.setItem("last_seen_timestamp", String(Date.now()));
-    }
-  };
 
-  document.addEventListener("visibilitychange", handleVisibility);
-  return () => document.removeEventListener("visibilitychange", handleVisibility);
-}, []);
+      if (lastSeen && Date.now() - parseInt(lastSeen) > FOUR_HOURS) {
+        // Been away more than 4 hours, reset
+        localStorage.setItem("total_session_time", "0");
+      } else if (saved) {
+        setTotalSessionTime(parseInt(saved, 10));
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        const lastSeen = localStorage.getItem("last_seen_timestamp");
+        const FOUR_HOURS = 4 * 60 * 60 * 1000;
+        if (lastSeen && Date.now() - parseInt(lastSeen) > FOUR_HOURS) {
+          setTotalSessionTime(0);
+          localStorage.setItem("total_session_time", "0");
+        }
+      } else {
+        // Page hidden, save timestamp
+        localStorage.setItem("last_seen_timestamp", String(Date.now()));
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibility);
+  }, []);
 
   useEffect(() => {
     const t = setInterval(() => {
@@ -571,36 +579,36 @@ useEffect(() => {
     } catch {}
   };
 
-const saveSession = () => {
-  const session = {
-    id: Date.now(),
-    date: new Date().toISOString(),
-    data: Object.fromEntries(
-      Object.entries(entries).map(([k, v]) => [
-        k,
-        v.filter((e) => e.exercise),
-      ]),
-    ),
+  const saveSession = () => {
+    const session = {
+      id: Date.now(),
+      date: new Date().toISOString(),
+      data: Object.fromEntries(
+        Object.entries(entries).map(([k, v]) => [
+          k,
+          v.filter((e) => e.exercise),
+        ]),
+      ),
+    };
+    const updated = [session, ...history];
+    setHistory(updated);
+    try {
+      localStorage.setItem("workout_history", JSON.stringify(updated));
+    } catch {}
+    setEntries({
+      Push: [emptyEntry()],
+      Pull: [emptyEntry()],
+      Legs: [emptyEntry()],
+      Cardio: [emptyEntry()],
+    });
+    // Reset session timer
+    setTotalSessionTime(0);
+    setSessionStartTime(Date.now());
+    localStorage.setItem("total_session_time", "0");
+    localStorage.setItem("last_seen_timestamp", String(Date.now()));
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
   };
-  const updated = [session, ...history];
-  setHistory(updated);
-  try {
-    localStorage.setItem("workout_history", JSON.stringify(updated));
-  } catch {}
-  setEntries({
-    Push: [emptyEntry()],
-    Pull: [emptyEntry()],
-    Legs: [emptyEntry()],
-    Cardio: [emptyEntry()],
-  });
-  // Reset session timer
-  setTotalSessionTime(0);
-  setSessionStartTime(Date.now());
-  localStorage.setItem("total_session_time", "0");
-  localStorage.setItem("last_seen_timestamp", String(Date.now()));
-  setSaved(true);
-  setTimeout(() => setSaved(false), 2500);
-};
 
   const deleteSession = (id) => {
     const updated = history.filter((h) => h.id !== id);
@@ -735,17 +743,36 @@ const saveSession = () => {
 
         <div
           data-name="Sticky-Stopwatch-Wrapper"
-          className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isSticky ? "bg-opacity-95 py-2 shadow-md" : "pointer-events-none"} ${darkMode ? "bg-[#1a1a1a]" : "bg-[#f9f7f4]"}`}
+          className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isSticky ? "bg-opacity-95 shadow-md" : "pointer-events-none"} ${darkMode ? "bg-[#1a1a1a]" : "bg-[#f9f7f4]"}`}
         >
           {isSticky && (
-            <div className="max-w-[680px] mx-auto px-3 text-center">
+            <div className="max-w-[680px] mx-auto px-3">
               <div
                 onClick={resetStopwatch}
-                className={`text-[28px] font-bold ${c.text} tracking-[2px] tabular-nums cursor-pointer hover:opacity-70 transition-opacity`}
+                className={`text-[28px] font-bold ${c.text} tracking-[2px] tabular-nums cursor-pointer hover:opacity-70 transition-opacity text-center py-2`}
               >
                 {String(Math.floor(elapsed / 60)).padStart(2, "0")}:
                 {String(elapsed % 60).padStart(2, "0")}
               </div>
+              {view === "log" && (
+                <div className={`flex gap-1.5 pb-2`}>
+                  {TABS.map((t) => {
+                    const tabC = COLORS[t];
+                    return (
+                      <button
+                        key={t}
+                        onClick={() => switchTab(t)}
+                        className={`flex-1 py-2 px-1 rounded-xl border-2 cursor-pointer font-bold text-[12px] transition-all duration-200 ${activeTab === t ? `${tabC.borderAccent} ${tabC.bg} ${tabC.text}` : darkMode ? "border-transparent bg-[#333] text-[#888]" : "border-transparent bg-[#ede9e5] text-[#999]"}`}
+                      >
+                        {t}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              <div
+                className={`h-[1px] ${darkMode ? "bg-[#333]" : "bg-[#e8e4e0]"}`}
+              />
             </div>
           )}
         </div>
@@ -767,42 +794,9 @@ const saveSession = () => {
             }
             className="block mx-auto w-20 cursor-pointer hover:opacity-80 transition-opacity"
             alt="Logo"
-            onClick={() => setShowLogoText((prev) => !prev)}
+            onClick={() => setShowLogoModal(true)}
           />
-          {showLogoText && (
-            <p
-              className={`text-sm text-center mt-2 mb-1 px-4 ${darkMode ? "text-[#aaa]" : "text-[#666]"}`}
-            >
-              こんにちは! <br />I am Ame-no-Tajikarao, the Shinto god of
-              strength and power. I will help you track your workouts and become
-              stronger! One day, you too will be ready to move your own boulder
-              like I did. <br /> しごとをはじめよう!
-            </p>
-          )}
-          {!showLogoText && (
-            <>
-              <p
-                className={`text-[14px] font-bold ${darkMode ? "text-[#d7d7d7]" : "text-[#616161]"} mb-1`}
-              >
-                Current Session
-              </p>
-              <p
-                className={`my-1 text-[14px] text-center mb- transition-colors duration-300 ${darkMode ? "text-[#ccc]" : "text-[#273226]"}`}
-              >
-                {formatDate(new Date())}
-              </p>
-              <div
-                className={`text-[14px] ${darkMode ? "text-[#d7d7d7]" : "text-[#616161]"} mb-2 tabular-nums`}
-              >
-                {String(Math.floor(totalSessionTime / 3600)).padStart(2, "0")}:
-                {String(Math.floor((totalSessionTime % 3600) / 60)).padStart(
-                  2,
-                  "0",
-                )}
-                :{String(totalSessionTime % 60).padStart(2, "0")}
-              </div>
-            </>
-          )}
+
           <div
             data-name="Stopwatch-Display"
             onClick={resetStopwatch}
@@ -816,19 +810,15 @@ const saveSession = () => {
         {/* SECTION: View Switcher (Log / History / Stats) */}
         <div
           data-name="View-Toggle-Navigation"
-          className="flex gap-2 mb-5 justify-center"
+          className={`flex mb-5 p-[5px] rounded-[14px] gap-[2px] ${darkMode ? "bg-[#2a2a2a]" : "bg-[#e0dbd6]"}`}
         >
           {["log", "history", "stats"].map((v) => (
             <button
               key={v}
               onClick={() => setView(v)}
-              className={`px-[22px] py-2 rounded-[20px] border-none cursor-pointer text-[13px] font-semibold transition-all duration-200 ${view === v ? "bg-[#b0c4de] text-white" : darkMode ? "bg-[#333] text-[#aaa]" : "bg-[#e8e4e0] text-[#888]"}`}
+              className={`flex-1 py-[9px] rounded-[10px] border-none cursor-pointer text-[13px] font-semibold transition-all duration-200 ${view === v ? "bg-white text-[#333]" : darkMode ? "bg-transparent text-[#aaa]" : "bg-transparent text-[#888]"}`}
             >
-              {v === "log"
-                ? "📝 Log"
-                : v === "history"
-                  ? "📅 History"
-                  : "📊 Stats"}
+              {v === "log" ? "Log" : v === "history" ? "History" : "Stats"}
             </button>
           ))}
         </div>
@@ -880,10 +870,25 @@ const saveSession = () => {
                           setExerciseSearchQuery("");
                           setShowExerciseSelectModal(true);
                         }}
-                        className={`flex-1 py-2 px-3 text-lg text-center rounded-lg border-[1.5px] ${c.border} ${darkMode ? "bg-[#1a1a1a] text-[#ccc]" : "bg-white text-[#555]"} text-[13px] font-semibold cursor-pointer outline-none`}
+                        className={`flex-1 py-[10px] px-4 rounded-[10px] border-[1.5px] flex items-center justify-between cursor-pointer outline-none transition-colors duration-200
+                          ${
+                            entry.exercise
+                              ? `${c.bg} ${c.border} ${c.text}`
+                              : darkMode
+                                ? "bg-[#1a1a1a] border-[#444] text-[#555]"
+                                : "bg-white border-[#f5b8b8] text-[#bbb]"
+                          }`}
                       >
-                        {entry.exercise || "Select Exercise"}
+                        <span className="text-[14px] font-semibold">
+                          {entry.exercise || "Select exercise"}
+                        </span>
+                        <span
+                          className={`text-[20px] leading-none ${entry.exercise ? c.text : darkMode ? "text-[#555]" : "text-[#e87878]"}`}
+                        >
+                          ›
+                        </span>
                       </button>
+
                       {entries[activeTab].length > 1 && (
                         <button
                           onClick={() => removeExercise(eIdx)}
@@ -944,171 +949,168 @@ const saveSession = () => {
 
                     {/* Current Workout Input Rows */}
                     {entry.exercise && (
-                      <div data-name="Sets-Input-Container">
+                      <div
+                        data-name="Sets-Input-Container"
+                        className="flex flex-col gap-2"
+                      >
                         {entry.rows.map((row, rIdx) => (
                           <div
                             data-name="Single-Set-Row"
                             key={rIdx}
-                            className={`mb-3 pb-3 border-b border-solid ${c.border} animate-fade-in`}
+                            className={`${darkMode ? "bg-[#1e1e1e]" : "bg-white"} border ${c.border} rounded-xl p-3 animate-fade-in`}
                           >
-                            <div className="flex items-center gap-3 mb-2">
-                              <span className="text-xs text-[#bbb] font-semibold w-5">
+                            {/* Set header */}
+                            <div className="flex items-center justify-between mb-2">
+                              <span
+                                className={`text-[11px] font-bold uppercase tracking-[0.5px] ${c.text}`}
+                              >
                                 Set {rIdx + 1}
                               </span>
-                              <div
-                                data-name="Input-Controls-Wrapper"
-                                className="flex-1"
-                              >
-                                {/* Weight/Distance Row */}
-                                <div
-                                  data-name="Weight-Control-Group"
-                                  className="flex items-center gap-2 mb-2"
-                                >
-                                  <span
-                                    className={`text-base font-semibold ${c.text} w-[50px]`}
-                                  >
-                                    {activeTab === "Cardio"
-                                      ? "Distance"
-                                      : "Weight"}
-                                  </span>
-                                  <div className="flex items-center gap-2 flex-1">
-                                    <span
-                                      className={`${darkMode ? "bg-[#1a1a1a] text-[#ccc]" : "bg-white text-[#555]"} border-[1.5px] ${c.border} rounded-lg py-1.5 px-3 text-base font-bold min-w-[50px] text-center`}
-                                    >
-                                      {row.weight || "—"}{" "}
-                                      {activeTab === "Cardio" ? "km" : ""}
-                                    </span>
-                                    <button
-                                      onClick={() =>
-                                        updateRow(
-                                          eIdx,
-                                          rIdx,
-                                          "weight",
-                                          Math.max(
-                                            0,
-                                            (parseFloat(row.weight) || 0) - 1,
-                                          ).toString(),
-                                        )
-                                      }
-                                      className={`${c.bg} border-[1.5px] ${c.border} ${c.text} rounded-lg py-1.5 px-3 text-[13px] font-bold cursor-pointer`}
-                                    >
-                                      −1
-                                    </button>
-                                    <button
-                                      onClick={() =>
-                                        updateRow(
-                                          eIdx,
-                                          rIdx,
-                                          "weight",
-                                          (
-                                            (parseFloat(row.weight) || 0) + 1
-                                          ).toString(),
-                                        )
-                                      }
-                                      className={`${c.bg} border-[1.5px] ${c.border} ${c.text} rounded-lg py-1.5 px-3 text-[13px] font-bold cursor-pointer`}
-                                    >
-                                      +1
-                                    </button>
-                                    <button
-                                      onClick={() =>
-                                        updateRow(
-                                          eIdx,
-                                          rIdx,
-                                          "weight",
-                                          (
-                                            (parseFloat(row.weight) || 0) + 5
-                                          ).toString(),
-                                        )
-                                      }
-                                      className={`${c.bg} border-[1.5px] ${c.border} ${c.text} rounded-lg py-1.5 px-3 text-[13px] font-bold cursor-pointer`}
-                                    >
-                                      +5
-                                    </button>
-                                  </div>
-                                </div>
-                                {/* Reps/Time Row */}
-                                <div
-                                  data-name="Reps-Control-Group"
-                                  className="flex items-center gap-2"
-                                >
-                                  <span
-                                    className={`text-base font-semibold ${c.text} w-[50px]`}
-                                  >
-                                    {activeTab === "Cardio" ? "Time" : "Reps"}
-                                  </span>
-                                  <div className="flex items-center gap-2 flex-1">
-                                    <span
-                                      className={`bg-white border-[1.5px] ${c.border} rounded-lg py-1.5 px-3 text-base font-bold text-[#555] min-w-[50px] text-center`}
-                                    >
-                                      {row.reps || "—"}{" "}
-                                      {activeTab === "Cardio" ? "min" : ""}
-                                    </span>
-                                    <button
-                                      onClick={() =>
-                                        updateRow(
-                                          eIdx,
-                                          rIdx,
-                                          "reps",
-                                          Math.max(
-                                            0,
-                                            (parseFloat(row.reps) || 0) - 1,
-                                          ).toString(),
-                                        )
-                                      }
-                                      className={`${c.bg} border-[1.5px] ${c.border} ${c.text} rounded-lg py-1.5 px-3 text-[13px] font-bold cursor-pointer`}
-                                    >
-                                      −1
-                                    </button>
-                                    <button
-                                      onClick={() =>
-                                        updateRow(
-                                          eIdx,
-                                          rIdx,
-                                          "reps",
-                                          (
-                                            (parseFloat(row.reps) || 0) + 1
-                                          ).toString(),
-                                        )
-                                      }
-                                      className={`${c.bg} border-[1.5px] ${c.border} ${c.text} rounded-lg py-1.5 px-3 text-[13px] font-bold cursor-pointer`}
-                                    >
-                                      +1
-                                    </button>
-                                    <button
-                                      onClick={() =>
-                                        updateRow(
-                                          eIdx,
-                                          rIdx,
-                                          "reps",
-                                          (
-                                            (parseFloat(row.reps) || 0) + 5
-                                          ).toString(),
-                                        )
-                                      }
-                                      className={`${c.bg} border-[1.5px] ${c.border} ${c.text} rounded-lg py-1.5 px-3 text-[13px] font-bold cursor-pointer`}
-                                    >
-                                      +5
-                                    </button>
-                                  </div>
-                                </div>
-                                {/* red reset button for exercises - currently using X-delete */}
-                                {/* <button onClick={() => { updateRow(eIdx, rIdx, "weight", ""); updateRow(eIdx, rIdx, "reps", ""); }} className="bg-[#FA502F] border-[1.5px] border-red-500 text-white rounded-lg py-1.5 px-3 text-xs font-bold cursor-pointer">Reset</button> */}
-                              </div>
                               <button
                                 onClick={() => removeSet(eIdx, rIdx)}
-                                className="bg-transparent border-none cursor-pointer text-[#da1010] text-lg flex-none self-start"
+                                className="bg-[#e87878] border-none cursor-pointer text-white text-[11px] font-bold rounded-md w-6 h-6 flex items-center justify-center"
                               >
-                                X
+                                ✕
                               </button>
+                            </div>
+
+                            {/* Weight row */}
+                            <div className="flex items-center gap-1.5 mb-2">
+                              <span
+                                className={`text-[13px] font-semibold ${c.text} w-[52px]`}
+                              >
+                                {activeTab === "Cardio" ? "Dist" : "Weight"}
+                              </span>
+                              <span
+                                className={`${darkMode ? "bg-[#1a1a1a]" : "bg-white"} border-2 ${c.border} ${c.text} rounded-lg py-[5px] px-2.5 text-[18px] font-black min-w-[50px] text-center`}
+                              >
+                                {row.weight || "—"}
+                                {activeTab === "Cardio" ? "km" : ""}
+                              </span>
+                              <div className="flex gap-1 flex-1">
+                                <button
+                                  onClick={() =>
+                                    updateRow(
+                                      eIdx,
+                                      rIdx,
+                                      "weight",
+                                      Math.max(
+                                        0,
+                                        (parseFloat(row.weight) || 0) - 1,
+                                      ).toString(),
+                                    )
+                                  }
+                                  className={`flex-1 ${c.bg} border ${c.border} ${c.text} rounded-lg py-[5px] text-[13px] font-bold cursor-pointer`}
+                                >
+                                  −1
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    updateRow(
+                                      eIdx,
+                                      rIdx,
+                                      "weight",
+                                      (
+                                        (parseFloat(row.weight) || 0) + 1
+                                      ).toString(),
+                                    )
+                                  }
+                                  className={`flex-1 ${c.bg} border ${c.border} ${c.text} rounded-lg py-[5px] text-[13px] font-bold cursor-pointer`}
+                                >
+                                  +1
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    updateRow(
+                                      eIdx,
+                                      rIdx,
+                                      "weight",
+                                      (
+                                        (parseFloat(row.weight) || 0) + 5
+                                      ).toString(),
+                                    )
+                                  }
+                                  className={`flex-1 ${c.bg} border ${c.border} ${c.text} rounded-lg py-[5px] text-[13px] font-bold cursor-pointer`}
+                                >
+                                  +5
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Reps row */}
+                            <div className="flex items-center gap-1.5">
+                              <span
+                                className={`text-[13px] font-semibold ${c.text} w-[52px]`}
+                              >
+                                {activeTab === "Cardio" ? "Time" : "Reps"}
+                              </span>
+                              <span
+                                className={`${darkMode ? "bg-[#1a1a1a]" : "bg-white"} border-2 ${c.border} ${c.text} rounded-lg py-[5px] px-2.5 text-[18px] font-black min-w-[50px] text-center`}
+                              >
+                                {row.reps || "—"}
+                                {activeTab === "Cardio" ? "m" : ""}
+                              </span>
+                              <div className="flex gap-1 flex-1">
+                                <button
+                                  onClick={() =>
+                                    updateRow(
+                                      eIdx,
+                                      rIdx,
+                                      "reps",
+                                      Math.max(
+                                        0,
+                                        (parseFloat(row.reps) || 0) - 1,
+                                      ).toString(),
+                                    )
+                                  }
+                                  className={`flex-1 ${c.bg} border ${c.border} ${c.text} rounded-lg py-[5px] text-[13px] font-bold cursor-pointer`}
+                                >
+                                  −1
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    updateRow(
+                                      eIdx,
+                                      rIdx,
+                                      "reps",
+                                      (
+                                        (parseFloat(row.reps) || 0) + 1
+                                      ).toString(),
+                                    )
+                                  }
+                                  className={`flex-1 ${c.bg} border ${c.border} ${c.text} rounded-lg py-[5px] text-[13px] font-bold cursor-pointer`}
+                                >
+                                  +1
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    updateRow(
+                                      eIdx,
+                                      rIdx,
+                                      "reps",
+                                      (
+                                        (parseFloat(row.reps) || 0) + 5
+                                      ).toString(),
+                                    )
+                                  }
+                                  className={`flex-1 ${c.bg} border ${c.border} ${c.text} rounded-lg py-[5px] text-[13px] font-bold cursor-pointer`}
+                                >
+                                  +5
+                                </button>
+                              </div>
                             </div>
                           </div>
                         ))}
+
                         <button
                           data-name="Add-Set-Button"
                           onClick={() => addSet(eIdx)}
-                          className={`mt-1.5 w-full p-[7px] rounded-lg border-[1.5px] border-dashed ${c.border} bg-transparent ${c.text} text-xs font-semibold cursor-pointer`}
+                          className={`w-full py-3 rounded-xl border-none ${c.fill} text-white text-[13px] font-bold cursor-pointer flex items-center justify-center gap-1.5`}
                         >
-                          + Another Set 💪
+                          <span className="text-[18px] font-light leading-none">
+                            +
+                          </span>{" "}
+                          Another set
                         </button>
                       </div>
                     )}
@@ -1121,16 +1123,17 @@ const saveSession = () => {
             <div data-name="Logging-Actions">
               <button
                 onClick={addExercise}
-                className={`mt-3 w-full p-3 rounded-xl border-2 border-dashed ${c.border} bg-transparent ${c.text} text-sm font-bold cursor-pointer transition-all duration-[900ms]`}
+                className={`mt-3 w-full py-3 rounded-xl border-none ${c.bg} ${c.text} text-[13px] font-bold cursor-pointer transition-all duration-200 flex items-center justify-center gap-2`}
               >
-                ➕ Add Exercise to current workout
+                <span className="text-[18px] font-light leading-none">+</span>
+                Add exercise
               </button>
 
               <button
                 onClick={saveSession}
                 className={`mt-3 w-full p-[13px] rounded-xl border-none text-white text-[15px] font-bold cursor-pointer transition-colors duration-300 ${saved ? "bg-[#a8d8a8]" : "bg-[#b0c4de]"}`}
               >
-                {saved ? "✅ Session Saved!" : "💾 Workout finished"}
+                {saved ? "✅ Session Saved!" : "Workout finished"}
               </button>
             </div>
           </div>
@@ -1160,6 +1163,22 @@ const saveSession = () => {
               onChange={uploadWorkoutData}
               className="hidden"
             />
+            <div
+              className={`text-center text-sm mb-1 ${darkMode ? "text-[#666]" : "text-[#aaa]"}`}
+            >
+              📅 {formatDate(new Date())}
+            </div>
+            <div
+              className={`text-center text-sm mb-4 tabular-nums ${darkMode ? "text-[#666]" : "text-[#aaa]"}`}
+            >
+              ⏱ Current session:{" "}
+              {String(Math.floor(totalSessionTime / 3600)).padStart(2, "0")}:
+              {String(Math.floor((totalSessionTime % 3600) / 60)).padStart(
+                2,
+                "0",
+              )}
+              :{String(totalSessionTime % 60).padStart(2, "0")}
+            </div>
             {history.length === 0 ? (
               <div
                 data-name="Empty-History-State"
@@ -1550,6 +1569,135 @@ const saveSession = () => {
               </div>
             );
           })()}
+
+        {/* Character Lore Modal */}
+        {showLogoModal && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-40"
+            onClick={() => setShowLogoModal(false)}
+          >
+            <div
+              className={`${darkMode ? "bg-[#1a1a1a]" : "bg-white"} rounded-t-3xl w-full max-h-[85vh] flex flex-col overflow-hidden`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="w-10 h-1 bg-[#e0dbd6] rounded-full mx-auto mt-3 mb-0" />
+
+              <div className="overflow-y-auto flex-1 p-4">
+                <div
+                  className={`${darkMode ? "bg-[#262626]" : "bg-[#fff5f5]"} rounded-2xl p-5`}
+                >
+                  <div className="flex flex-col items-center mb-4">
+                    <img
+                      src="/Bruscles/assets/tajikarao.png"
+                      className="w-24 mb-3"
+                      alt="Ame-no-Tajikarao"
+                    />
+                    <div className="text-[18px] font-bold text-[#e87878] mb-1">
+                      Ame-no-Tajikarao
+                    </div>
+                    <div className="text-[11px] font-bold uppercase tracking-[1px] text-[#f5b8b8]">
+                      God of Strength & Athletics
+                    </div>
+                  </div>
+
+                  <div
+                    className={`h-[0.5px] ${darkMode ? "bg-[#444]" : "bg-[#f5b8b8]"} mb-4`}
+                  />
+
+                  <p
+                    className={`text-[16px] text-center leading-relaxed ${darkMode ? "text-[#aaa]" : "text-[#c47878]"}`}
+                  >
+                    こんにちは!
+                    <br /> I am Ame-no-Tajikarao, the Shinto god of strength and
+                    power. I will help you track your workouts and become
+                    stronger! One day, you too will be ready to move your own
+                    boulder like I did.
+                  </p>
+                  <p
+                    className={`text-[16px] mt-6 text-center leading-relaxed ${darkMode ? "text-[#aaa]" : "text-[#c47878]"}`}
+                  >
+                    {" "}
+                    This is my Story
+                  </p>
+                  <p
+                    className={`text-[16px] mt-6 text-center leading-relaxed ${darkMode ? "text-[#aaa]" : "text-[#c47878]"}`}
+                  >
+                    One day Susanoo, the Shinto god of storms and the sea, went
+                    on a destructive rampage.
+                    <img
+                      src="/Bruscles/assets/story1.png"
+                      className="w-60 m-3 mx-auto rounded-3xl"
+                      alt="Ame-no-Tajikarao"
+                    />
+                  </p>
+                  <p
+                    className={`text-[16px] mt-6 text-center leading-relaxed ${darkMode ? "text-[#aaa]" : "text-[#c47878]"}`}
+                  >
+                    Heatbroken by her brothers actions, Amaterasu, the Shinto
+                    goddess of the sun and Susanoo's sister, hid herself in a
+                    cave, plunging the world into darkness.
+                    <img
+                      src="/Bruscles/assets/story2.png"
+                      className="w-72 m-3 mx-auto rounded-3xl"
+                      alt="Ame-no-Tajikarao"
+                    />
+                  </p>
+                  <p
+                    className={`text-[16px] mt-6 text-center leading-relaxed ${darkMode ? "text-[#aaa]" : "text-[#c47878]"}`}
+                  >
+                    Realizing they couldn’t force her out, millions of gods
+                    gathered outside to come up with a plan.
+                    <img
+                      src="/Bruscles/assets/story3.png"
+                      className="w-64 m-3 mx-auto rounded-3xl"
+                      alt="Ame-no-Tajikarao"
+                    />
+                  </p>
+                  <p
+                    className={`text-[16px] mt-6 text-center leading-relaxed ${darkMode ? "text-[#aaa]" : "text-[#c47878]"}`}
+                  >
+                    They threw a wild, roaring party with music, dancing, and a
+                    mirror to bait her curiosity, hoping to lure her out of the
+                    cave.
+                    <img
+                      src="/Bruscles/assets/story3.1.png"
+                      className="w-64 m-3 mx-auto rounded-3xl"
+                      alt="Ame-no-Tajikarao"
+                    />
+                  </p>
+                  <p
+                    className={`text-[16px] mt-6 text-center leading-relaxed ${darkMode ? "text-[#aaa]" : "text-[#c47878]"}`}
+                  >
+                    When all else failed, Ame-no-Tajikarao, the god of physical
+                    strength, unleashed his unmatched power. With a mighty
+                    heave, he wrenched the colossal boulder away from the cave's
+                    entrance and freed Amaterasu, instantly restoring radiant
+                    light to the world once more.
+                    <img
+                      src="/Bruscles/assets/story4.png"
+                      className="w-64 m-3 mx-auto rounded-3xl"
+                      alt="Ame-no-Tajikarao"
+                    />
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-4 pt-2">
+                <div
+                  className={`text-[11px] text-center uppercase tracking-[0.5px] mb-3 ${darkMode ? "text-[#555]" : "text-[#ccc]"}`}
+                >
+                  Taji Trainer · Made by Bman
+                </div>
+                <button
+                  onClick={() => setShowLogoModal(false)}
+                  className="w-full bg-[#e87878] border-none rounded-2xl py-4 text-white text-[16px] font-bold cursor-pointer"
+                >
+                  Back to training
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
