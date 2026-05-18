@@ -30,38 +30,42 @@ const EXERCISES = {
 
 // Refactored to map to Tailwind utility classes instead of raw hex values
 const COLORS = {
-  Push: {
-    bg: "bg-[#fde8e8]",
-    border: "border-[#f5b8b8]",
-    borderAccent: "border-[#e87878]",
-    text: "text-[#e87878]",
-    fill: "bg-[#e87878]",
-    light: "bg-[#fff5f5]",
-  },
-  Pull: {
-    bg: "bg-[#e8f0fd]",
-    border: "border-[#b8cef5]",
-    borderAccent: "border-[#7899e8]",
-    text: "text-[#7899e8]",
-    fill: "bg-[#7899e8]",
-    light: "bg-[#f5f8ff]",
-  },
-  Legs: {
-    bg: "bg-[#e3fde4]",
-    border: "border-[#b8f0b8]",
-    borderAccent: "border-[#78c878]",
-    text: "text-[#78c878]",
-    fill: "bg-[#78c878]",
-    light: "bg-[#f5fff5]",
-  },
-  Cardio: {
-    bg: "bg-[#fdf5e8]",
-    border: "border-[#f5ddb8]",
-    borderAccent: "border-[#e8a850]",
-    text: "text-[#e8a850]",
-    fill: "bg-[#e8a850]",
-    light: "bg-[#fffaf5]",
-  },
+Push: {
+  bg: "bg-[#F3E4E4]",
+  border: "border-[#D8B7B7]",
+  borderAccent: "border-[#C98C8C]",
+  text: "text-[#C98C8C]",
+  fill: "bg-[#C98C8C]",
+  light: "bg-[#F1E2E2]",
+},
+
+Pull: {
+  bg: "bg-[#E7EBF0]",
+  border: "border-[#BCC6D2]",
+  borderAccent: "border-[#7E90A8]",
+  text: "text-[#7E90A8]",
+  fill: "bg-[#7E90A8]",
+  light: "bg-[#E3E8EE]",
+},
+
+Legs: {
+  bg: "bg-[#E8EFE6]",
+  border: "border-[#C2D0BE]",
+  borderAccent: "border-[#8FA58A]",
+  text: "text-[#8FA58A]",
+  fill: "bg-[#8FA58A]",
+  light: "bg-[#E3EBE1]",
+},
+
+Cardio: {
+  bg: "bg-[#F3ECE3]",
+  border: "border-[#DDC8AA]",
+  borderAccent: "border-[#C9A06B]",
+  text: "text-[#C9A06B]",
+  fill: "bg-[#C9A06B]",
+  light: "bg-[#EFE6DA]",
+
+},
 };
 
 const TABS = ["Push", "Pull", "Legs", "Cardio"];
