@@ -519,7 +519,15 @@ export default function App() {
     setEntries((prev) => {
       const tab = [...prev[activeTab]];
       const rows = tab[eIdx].rows.filter((_, i) => i !== rIdx);
-      tab[eIdx] = { ...tab[eIdx], rows: rows.length ? rows : [emptySet()] };
+      if (rows.length === 0) {
+        // No sets left, remove the entire exercise card
+        const updatedTab = tab.filter((_, i) => i !== eIdx);
+        return {
+          ...prev,
+          [activeTab]: updatedTab.length ? updatedTab : [emptyEntry()],
+        };
+      }
+      tab[eIdx] = { ...tab[eIdx], rows };
       return { ...prev, [activeTab]: tab };
     });
   };
@@ -730,6 +738,10 @@ export default function App() {
     fileInputRef.current?.click();
   };
 
+  const version = new Date();
+  const day = version.getDate();
+  const month = version.getMonth() + 1;
+
   return (
     <div
       data-name="App-Container"
@@ -737,8 +749,9 @@ export default function App() {
     >
       <div data-name="Main-Content-Wrapper" className="max-w-[680px] mx-auto">
         {/* current bVersion */}
-        <p data-name="app-version" 
-        className=" text-[12px] text-gray-500 mb-2">V18.5</p>
+        <p data-name="app-version" className="text-[12px] text-gray-500 mb-2">
+          V{month}.{day}
+        </p>
         {/* SECTION: Header & Stopwatch */}
         <div
           ref={stopwatchRef}
@@ -1649,8 +1662,8 @@ export default function App() {
                   <p
                     className={`text-[16px] mt-6 text-center leading-relaxed ${darkMode ? "text-[#aaa]" : "text-[#c47878]"}`}
                   >
-                    Millions of gods
-                    gathered outside to come up with a plan. Realizing they couldn’t force her out..
+                    Millions of gods gathered outside to come up with a plan.
+                    Realizing they couldn’t force her out..
                     <img
                       src="/Bruscles/assets/story3.png"
                       className="w-64 m-3 mx-auto rounded-3xl"
@@ -1660,9 +1673,8 @@ export default function App() {
                   <p
                     className={`text-[16px] mt-6 text-center leading-relaxed ${darkMode ? "text-[#aaa]" : "text-[#c47878]"}`}
                   >
-                    They threw a wild party with music, dancing, and a
-                    mirror to bait her curiosity, hoping to lure her out of the
-                    cave.
+                    They threw a wild party with music, dancing, and a mirror to
+                    bait her curiosity, hoping to lure her out of the cave.
                     <img
                       src="/Bruscles/assets/story3.1.png"
                       className="w-64 m-3 mx-auto rounded-3xl"
@@ -1674,9 +1686,9 @@ export default function App() {
                   >
                     When all else failed, Ame-no-Tajikarao, the god of physical
                     strength, unleashed his unmatched power. With a mighty
-                    heave, he wrenched the boulder away from the cave's
-                    entrance and freed Amaterasu, instantly restoring radiant
-                    light to the world once again.
+                    heave, he wrenched the boulder away from the cave's entrance
+                    and freed Amaterasu, instantly restoring radiant light to
+                    the world once again.
                     <img
                       src="/Bruscles/assets/story4.png"
                       className="w-64 m-3 mx-auto rounded-3xl"
