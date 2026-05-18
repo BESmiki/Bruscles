@@ -30,42 +30,41 @@ const EXERCISES = {
 
 // Refactored to map to Tailwind utility classes instead of raw hex values
 const COLORS = {
-Push: {
-  bg: "bg-[#F3E4E4]",
-  border: "border-[#D8B7B7]",
-  borderAccent: "border-[#C98C8C]",
-  text: "text-[#C98C8C]",
-  fill: "bg-[#C98C8C]",
-  light: "bg-[#F1E2E2]",
-},
+  Push: {
+    bg: "bg-[#F3E4E4]",
+    border: "border-[#D8B7B7]",
+    borderAccent: "border-[#C98C8C]",
+    text: "text-[#C98C8C]",
+    fill: "bg-[#C98C8C]",
+    light: "bg-[#F1E2E2]",
+  },
 
-Pull: {
-  bg: "bg-[#E7EBF0]",
-  border: "border-[#BCC6D2]",
-  borderAccent: "border-[#7E90A8]",
-  text: "text-[#7E90A8]",
-  fill: "bg-[#7E90A8]",
-  light: "bg-[#E3E8EE]",
-},
+  Pull: {
+    bg: "bg-[#E7EBF0]",
+    border: "border-[#BCC6D2]",
+    borderAccent: "border-[#7E90A8]",
+    text: "text-[#7E90A8]",
+    fill: "bg-[#7E90A8]",
+    light: "bg-[#E3E8EE]",
+  },
 
-Legs: {
-  bg: "bg-[#E8EFE6]",
-  border: "border-[#C2D0BE]",
-  borderAccent: "border-[#8FA58A]",
-  text: "text-[#8FA58A]",
-  fill: "bg-[#8FA58A]",
-  light: "bg-[#E3EBE1]",
-},
+  Legs: {
+    bg: "bg-[#E8EFE6]",
+    border: "border-[#C2D0BE]",
+    borderAccent: "border-[#8FA58A]",
+    text: "text-[#8FA58A]",
+    fill: "bg-[#8FA58A]",
+    light: "bg-[#E3EBE1]",
+  },
 
-Cardio: {
-  bg: "bg-[#F3ECE3]",
-  border: "border-[#DDC8AA]",
-  borderAccent: "border-[#C9A06B]",
-  text: "text-[#C9A06B]",
-  fill: "bg-[#C9A06B]",
-  light: "bg-[#EFE6DA]",
-
-},
+  Cardio: {
+    bg: "bg-[#F3ECE3]",
+    border: "border-[#DDC8AA]",
+    borderAccent: "border-[#C9A06B]",
+    text: "text-[#C9A06B]",
+    fill: "bg-[#C9A06B]",
+    light: "bg-[#EFE6DA]",
+  },
 };
 
 const TABS = ["Push", "Pull", "Legs", "Cardio"];
@@ -737,8 +736,10 @@ export default function App() {
       className={`font-sans min-h-screen py-5 px-3 transition-colors duration-300 ${darkMode ? "bg-[#1a1a1a]" : "bg-[#f9f7f4]"}`}
     >
       <div data-name="Main-Content-Wrapper" className="max-w-[680px] mx-auto">
+        {/* current bVersion */}
+        <p data-name="app-version" 
+        className=" text-[12px] text-gray-500 mb-2">V18.5</p>
         {/* SECTION: Header & Stopwatch */}
-
         <div
           ref={stopwatchRef}
           data-name="Stopwatch-Sentinel"
@@ -820,7 +821,7 @@ export default function App() {
             <button
               key={v}
               onClick={() => setView(v)}
-              className={`flex-1 py-[9px] rounded-[10px] border-none cursor-pointer text-[13px] font-semibold transition-all duration-200 ${view === v ? "bg-white text-[#333]" : darkMode ? "bg-transparent text-[#aaa]" : "bg-transparent text-[#888]"}`}
+              className={`flex-1 py-[9px] rounded-[10px] border-none cursor-pointer text-[13px] font-semibold transition-all duration-200 ${view === v ? "bg-[#f0f0f0] text-[#333]" : darkMode ? "bg-transparent text-[#aaa]" : "bg-transparent text-[#888]"}`}
             >
               {v === "log" ? "Log" : v === "history" ? "History" : "Stats"}
             </button>
@@ -879,15 +880,15 @@ export default function App() {
                             entry.exercise
                               ? `${c.bg} ${c.border} ${c.text}`
                               : darkMode
-                                ? "bg-[#1a1a1a] border-[#444] text-[#555]"
-                                : "bg-white border-[#f5b8b8] text-[#bbb]"
+                                ? "bg-[#373737] border-[#444] text-[#c8c8c8]"
+                                : "bg-white border-[#cac3c3] text-[#8e8e8e]"
                           }`}
                       >
                         <span className="text-[14px] font-semibold">
                           {entry.exercise || "Select exercise"}
                         </span>
                         <span
-                          className={`text-[20px] leading-none ${entry.exercise ? c.text : darkMode ? "text-[#555]" : "text-[#e87878]"}`}
+                          className={`text-[20px] leading-none ${entry.exercise ? c.text : darkMode ? "text-[#555]" : "text-[#ededed]"}`}
                         >
                           ›
                         </span>
@@ -896,7 +897,7 @@ export default function App() {
                       {entries[activeTab].length > 1 && (
                         <button
                           onClick={() => removeExercise(eIdx)}
-                          className="bg-transparent border-none cursor-pointer text-[#f50b0b] text-lg"
+                          className="bg-transparent border-none cursor-pointer text-[#ffdfdf] text-lg"
                         >
                           ✕
                         </button>
@@ -1127,15 +1128,14 @@ export default function App() {
             <div data-name="Logging-Actions">
               <button
                 onClick={addExercise}
-                className={`mt-3 w-full py-3 rounded-xl border-none ${c.bg} ${c.text} text-[13px] font-bold cursor-pointer transition-all duration-200 flex items-center justify-center gap-2`}
+                className={`mt-3 w-full py-3 rounded-xl border-none ${c.bg} ${c.text} text-[18px] font-bold cursor-pointer transition-all duration-200 flex items-center justify-center gap-2`}
               >
-                <span className="text-[18px] font-light leading-none">+</span>
-                Add exercise
+                + Add exercise
               </button>
 
               <button
                 onClick={saveSession}
-                className={`mt-3 w-full p-[13px] rounded-xl border-none text-white text-[15px] font-bold cursor-pointer transition-colors duration-300 ${saved ? "bg-[#a8d8a8]" : "bg-[#b0c4de]"}`}
+                className={`mt-3 w-full p-[13px] rounded-xl border-none text-white text-[18px] font-bold cursor-pointer transition-colors duration-300 ${saved ? "bg-[#a8d8a8]" : "bg-[#b0c4de]"}`}
               >
                 {saved ? "✅ Session Saved!" : "Workout finished"}
               </button>
@@ -1605,7 +1605,7 @@ export default function App() {
                   </div>
 
                   <div
-                    className={`h-[0.5px] ${darkMode ? "bg-[#444]" : "bg-[#f5b8b8]"} mb-4`}
+                    className={`h-[0.5px] ${darkMode ? "bg-[#444]" : "bg-[#d3cfcf]"} mb-4`}
                   />
 
                   <p
@@ -1649,8 +1649,8 @@ export default function App() {
                   <p
                     className={`text-[16px] mt-6 text-center leading-relaxed ${darkMode ? "text-[#aaa]" : "text-[#c47878]"}`}
                   >
-                    Realizing they couldn’t force her out, millions of gods
-                    gathered outside to come up with a plan.
+                    Millions of gods
+                    gathered outside to come up with a plan. Realizing they couldn’t force her out..
                     <img
                       src="/Bruscles/assets/story3.png"
                       className="w-64 m-3 mx-auto rounded-3xl"
@@ -1660,7 +1660,7 @@ export default function App() {
                   <p
                     className={`text-[16px] mt-6 text-center leading-relaxed ${darkMode ? "text-[#aaa]" : "text-[#c47878]"}`}
                   >
-                    They threw a wild, roaring party with music, dancing, and a
+                    They threw a wild party with music, dancing, and a
                     mirror to bait her curiosity, hoping to lure her out of the
                     cave.
                     <img
@@ -1674,9 +1674,9 @@ export default function App() {
                   >
                     When all else failed, Ame-no-Tajikarao, the god of physical
                     strength, unleashed his unmatched power. With a mighty
-                    heave, he wrenched the colossal boulder away from the cave's
+                    heave, he wrenched the boulder away from the cave's
                     entrance and freed Amaterasu, instantly restoring radiant
-                    light to the world once more.
+                    light to the world once again.
                     <img
                       src="/Bruscles/assets/story4.png"
                       className="w-64 m-3 mx-auto rounded-3xl"
