@@ -1618,7 +1618,7 @@ export default function App() {
                 <div
                   className={`text-[11px] text-center uppercase tracking-[0.5px] mb-3 ${darkMode ? DARK.textFaint : "text-[#ccc]"}`}
                 >
-                  Taji Trainer · Made by Bman
+                  Taji Trainer 力 Made by Bman
                 </div>
                 <button
                   onClick={() => setShowLogoModal(false)}
