@@ -1418,7 +1418,7 @@ export default function App() {
               ...(customExercises[activeTab]?.filter(
                 (ex) => !deletedExercises[activeTab]?.includes(ex),
               ) || []),
-            ];
+            ].sort((a, b) => a.localeCompare(b));
             const filtered = allExercises.filter((ex) =>
               ex.toLowerCase().includes(exerciseSearchQuery.toLowerCase()),
             );
