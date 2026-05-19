@@ -28,7 +28,6 @@ const EXERCISES = {
   Cardio: ["Running", "Cycling"],
 };
 
-// Refactored to map to Tailwind utility classes instead of raw hex values
 const COLORS = {
   Push: {
     bg: "bg-[#F3E4E4]",
@@ -38,7 +37,6 @@ const COLORS = {
     fill: "bg-[#C98C8C]",
     light: "bg-[#F1E2E2]",
   },
-
   Pull: {
     bg: "bg-[#E7EBF0]",
     border: "border-[#BCC6D2]",
@@ -47,7 +45,6 @@ const COLORS = {
     fill: "bg-[#7E90A8]",
     light: "bg-[#E3E8EE]",
   },
-
   Legs: {
     bg: "bg-[#E8EFE6]",
     border: "border-[#C2D0BE]",
@@ -56,7 +53,6 @@ const COLORS = {
     fill: "bg-[#8FA58A]",
     light: "bg-[#E3EBE1]",
   },
-
   Cardio: {
     bg: "bg-[#F3ECE3]",
     border: "border-[#DDC8AA]",
@@ -65,6 +61,24 @@ const COLORS = {
     fill: "bg-[#C9A06B]",
     light: "bg-[#EFE6DA]",
   },
+};
+
+//  DARK MODE COLOR VARIABLES
+const DARK = {
+  bg: "bg-[#000000]", // main app background
+  bgCard: "bg-[#111111]", // exercise cards, modals, set rows
+  bgCardAlt: "bg-[#141414]", // history cards
+  bgInput: "bg-[#0a0a0a]", // weight/reps value display
+  bgTab: "bg-[#111111]", // view switcher pill background
+  bgTabInactive: "bg-[#1e1e1e]", // inactive category tabs & buttons
+  bgStickyTab: "bg-[#1e1e1e]", // sticky bar inactive tabs
+  border: "border-[#222222]", // general borders
+  borderCard: "border-[#2a2a2a]", // card borders
+  text: "text-[#f0f0f0]", // primary text
+  textSecondary: "text-[#aaaaaa]", // secondary text
+  textMuted: "text-[#666666]", // muted/placeholder text
+  textFaint: "text-[#333333]", // very faint text / delete buttons
+  divider: "bg-[#222222]", // divider lines
 };
 
 const TABS = ["Push", "Pull", "Legs", "Cardio"];
@@ -102,7 +116,6 @@ function getLastStats(history, exercise) {
   return null;
 }
 
-// function StatsView({ history }) {
 function StatsView({ history, darkMode }) {
   if (history.length === 0)
     return (
@@ -119,7 +132,6 @@ function StatsView({ history, darkMode }) {
 
   const total = Object.values(counts).reduce((a, b) => a + b, 0) || 1;
 
-  // Calculate exercise frequency and total weight
   const exerciseStats = {};
   for (const session of history) {
     for (const tab of TABS) {
@@ -167,18 +179,16 @@ function StatsView({ history, darkMode }) {
     0;
 
   const leastPerformed = allNonCardio.slice(0, 3);
-  // test
 
   return (
     <div>
-      {/* Recommended Exercises Section */}
       {leastPerformed.length > 0 && (
         <div className="mb-6 pb-6 border-b border-[#e0dbd6]">
           <h3 className="text-center text-[#888] text-base font-bold mb-4">
             Recommended Exercises
           </h3>
           <div
-            className={`rounded-xl p-4 border border-[#e0dbd6] ${darkMode ? "bg-[#262626]" : "bg-[#f5f5f5]"}`}
+            className={`rounded-xl p-4 border border-[#e0dbd6] ${darkMode ? `${DARK.bgCard}` : "bg-[#f5f5f5]"}`}
           >
             <div className="text-[12px] font-bold text-[#888] uppercase tracking-[0.5px] mb-3">
               Recommended Exercises
@@ -201,7 +211,6 @@ function StatsView({ history, darkMode }) {
                       {exerciseName}
                     </span>
                   </div>
-
                   <span className="text-xs text-[#bbb]">
                     {Math.max(0, fourthLowestSets + 1 - stats.totalSets)} set
                     {Math.max(0, fourthLowestSets + 1 - stats.totalSets) !== 1
@@ -244,7 +253,6 @@ function StatsView({ history, darkMode }) {
         );
       })}
 
-      {/* Exercise Highlights Section */}
       {(mostFrequent || mostWeight || mostSets) && (
         <div className="mt-8 pt-6 border-t border-[#e0dbd6]">
           <h3 className="text-center text-[#888] text-base font-bold mb-5">
@@ -253,15 +261,15 @@ function StatsView({ history, darkMode }) {
           <div className="flex flex-col gap-4">
             {mostFrequent && (
               <div
-                className={`${darkMode ? "bg-[#262626] border-[#444]" : "bg-[#f5f5f5] border-[#e0dbd6]"} rounded-xl p-4 border`}
+                className={`${darkMode ? `${DARK.bgCard} ${DARK.borderCard}` : "bg-[#f5f5f5] border-[#e0dbd6]"} rounded-xl p-4 border`}
               >
                 <div
-                  className={`text-[12px] font-bold ${darkMode ? "text-[#666]" : "text-[#999]"} uppercase tracking-[0.5px] mb-2`}
+                  className={`text-[12px] font-bold ${darkMode ? DARK.textMuted : "text-[#999]"} uppercase tracking-[0.5px] mb-2`}
                 >
                   🔥 Fav Exercise
                 </div>
                 <div
-                  className={`text-lg font-bold ${darkMode ? "text-[#ccc]" : "text-[#555]"}`}
+                  className={`text-lg font-bold ${darkMode ? DARK.text : "text-[#555]"}`}
                 >
                   {mostFrequent[0]}
                 </div>
@@ -272,15 +280,15 @@ function StatsView({ history, darkMode }) {
             )}
             {mostWeight && (
               <div
-                className={`${darkMode ? "bg-[#262626] border-[#444]" : "bg-[#f5f5f5] border-[#e0dbd6]"} rounded-xl p-4 border`}
+                className={`${darkMode ? `${DARK.bgCard} ${DARK.borderCard}` : "bg-[#f5f5f5] border-[#e0dbd6]"} rounded-xl p-4 border`}
               >
                 <div
-                  className={`text-[12px] font-bold ${darkMode ? "text-[#666]" : "text-[#999]"} uppercase tracking-[0.5px] mb-2`}
+                  className={`text-[12px] font-bold ${darkMode ? DARK.textMuted : "text-[#999]"} uppercase tracking-[0.5px] mb-2`}
                 >
                   💪 Most Total Weight Moved
                 </div>
                 <div
-                  className={`text-lg font-bold ${darkMode ? "text-[#ccc]" : "text-[#555]"}`}
+                  className={`text-lg font-bold ${darkMode ? DARK.text : "text-[#555]"}`}
                 >
                   {mostWeight[0]}
                 </div>
@@ -291,16 +299,15 @@ function StatsView({ history, darkMode }) {
             )}
             {mostSets && (
               <div
-                className={`${darkMode ? "bg-[#262626] border-[#444]" : "bg-[#f5f5f5] border-[#e0dbd6]"} rounded-xl p-4 border`}
+                className={`${darkMode ? `${DARK.bgCard} ${DARK.borderCard}` : "bg-[#f5f5f5] border-[#e0dbd6]"} rounded-xl p-4 border`}
               >
-                {/* <div className="text-[12px] font-bold text-[#999] uppercase tracking-[0.5px] mb-2"> */}
                 <div
-                  className={`text-[12px] font-bold ${darkMode ? "text-[#666]" : "text-[#999]"} uppercase tracking-[0.5px] mb-2`}
+                  className={`text-[12px] font-bold ${darkMode ? DARK.textMuted : "text-[#999]"} uppercase tracking-[0.5px] mb-2`}
                 >
                   🎯 Most Sets
                 </div>
                 <div
-                  className={`text-lg font-bold ${darkMode ? "text-[#ccc]" : "text-[#555]"}`}
+                  className={`text-lg font-bold ${darkMode ? DARK.text : "text-[#555]"}`}
                 >
                   {mostSets[0]}
                 </div>
@@ -309,7 +316,6 @@ function StatsView({ history, darkMode }) {
                 </div>
               </div>
             )}
-            {/* ADD footer here for stats page */}
             <h2
               className={`text-large text-center m-4 ${darkMode ? "text-green-400" : "text-green-700"}`}
             >
@@ -358,16 +364,18 @@ export default function App() {
   const [showDeleteExerciseModal, setShowDeleteExerciseModal] = useState(false);
   const [expandedSessions, setExpandedSessions] = useState({});
   const [showLogoModal, setShowLogoModal] = useState(false);
-  const toggleSession = (id) => {
+
+  const toggleSession = (id) =>
     setExpandedSessions((prev) => ({ ...prev, [id]: !prev[id] }));
-  };
+
   const switchTab = (tab) => {
     const scrollY = window.scrollY;
     setActiveTab(tab);
-    requestAnimationFrame(() => {
-      window.scrollTo({ top: scrollY, behavior: "instant" });
-    });
+    requestAnimationFrame(() =>
+      window.scrollTo({ top: scrollY, behavior: "instant" }),
+    );
   };
+
   const [deleteExerciseTab, setDeleteExerciseTab] = useState("Push");
   const [totalSessionTime, setTotalSessionTime] = useState(0);
   const [sessionStartTime, setSessionStartTime] = useState(Date.now());
@@ -389,16 +397,10 @@ export default function App() {
 
   useEffect(() => {
     const observer = new IntersectionObserver(
-      ([entry]) => {
-        setIsSticky(!entry.isIntersecting);
-      },
+      ([entry]) => setIsSticky(!entry.isIntersecting),
       { threshold: 0 },
     );
-
-    if (stopwatchRef.current) {
-      observer.observe(stopwatchRef.current);
-    }
-
+    if (stopwatchRef.current) observer.observe(stopwatchRef.current);
     return () => observer.disconnect();
   }, []);
 
@@ -408,14 +410,12 @@ export default function App() {
       if (h) setHistory(JSON.parse(h));
     } catch {}
   }, []);
-
   useEffect(() => {
     try {
       const ce = localStorage.getItem("custom_exercises");
       if (ce) setCustomExercises(JSON.parse(ce));
     } catch {}
   }, []);
-
   useEffect(() => {
     try {
       const de = localStorage.getItem("deleted_exercises");
@@ -428,9 +428,7 @@ export default function App() {
       const saved = localStorage.getItem("total_session_time");
       const lastSeen = localStorage.getItem("last_seen_timestamp");
       const FOUR_HOURS = 4 * 60 * 60 * 1000;
-
       if (lastSeen && Date.now() - parseInt(lastSeen) > FOUR_HOURS) {
-        // Been away more than 4 hours, reset
         localStorage.setItem("total_session_time", "0");
       } else if (saved) {
         setTotalSessionTime(parseInt(saved, 10));
@@ -448,11 +446,9 @@ export default function App() {
           localStorage.setItem("total_session_time", "0");
         }
       } else {
-        // Page hidden, save timestamp
         localStorage.setItem("last_seen_timestamp", String(Date.now()));
       }
     };
-
     document.addEventListener("visibilitychange", handleVisibility);
     return () =>
       document.removeEventListener("visibilitychange", handleVisibility);
@@ -460,9 +456,6 @@ export default function App() {
 
   useEffect(() => {
     const t = setInterval(() => {
-      const currentSessionElapsed = Math.floor(
-        (Date.now() - sessionStartTime) / 1000,
-      );
       setTotalSessionTime((prev) => {
         const newTotal = prev + 1;
         try {
@@ -520,7 +513,6 @@ export default function App() {
       const tab = [...prev[activeTab]];
       const rows = tab[eIdx].rows.filter((_, i) => i !== rIdx);
       if (rows.length === 0) {
-        // No sets left, remove the entire exercise card
         const updatedTab = tab.filter((_, i) => i !== eIdx);
         return {
           ...prev,
@@ -532,12 +524,11 @@ export default function App() {
     });
   };
 
-  const addExercise = () => {
+  const addExercise = () =>
     setEntries((prev) => ({
       ...prev,
       [activeTab]: [...prev[activeTab], emptyEntry()],
     }));
-  };
 
   const removeExercise = (idx) => {
     setEntries((prev) => {
@@ -606,19 +597,20 @@ export default function App() {
     try {
       localStorage.setItem("workout_history", JSON.stringify(updated));
     } catch {}
-    setEntries({
-      Push: [emptyEntry()],
-      Pull: [emptyEntry()],
-      Legs: [emptyEntry()],
-      Cardio: [emptyEntry()],
-    });
-    // Reset session timer
     setTotalSessionTime(0);
     setSessionStartTime(Date.now());
     localStorage.setItem("total_session_time", "0");
     localStorage.setItem("last_seen_timestamp", String(Date.now()));
     setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+    setTimeout(() => {
+      setEntries({
+        Push: [emptyEntry()],
+        Pull: [emptyEntry()],
+        Legs: [emptyEntry()],
+        Cardio: [emptyEntry()],
+      });
+      setSaved(false);
+    }, 1500);
   };
 
   const deleteSession = (id) => {
@@ -649,13 +641,10 @@ export default function App() {
   const uploadWorkoutData = (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
         const importedData = JSON.parse(e.target.result);
-
-        // Handle old format (array), medium format (history + customExercises), and new format (history + customExercises + deletedExercises)
         let historyData, customEx, deletedEx;
         if (Array.isArray(importedData)) {
           historyData = importedData;
@@ -676,7 +665,6 @@ export default function App() {
             Cardio: [],
           };
         }
-
         const merged = [...historyData, ...history];
         const uniqueMerged = [];
         const seenIds = new Set();
@@ -686,9 +674,8 @@ export default function App() {
             uniqueMerged.push(session);
           }
         }
-
-        // Merge custom exercises
         const mergedCustomEx = { ...customEx };
+        const mergedDeletedEx = { ...deletedEx };
         for (const tab of TABS) {
           mergedCustomEx[tab] = [
             ...new Set([
@@ -696,11 +683,6 @@ export default function App() {
               ...(customExercises[tab] || []),
             ]),
           ];
-        }
-
-        // Merge deleted exercises
-        const mergedDeletedEx = { ...deletedEx };
-        for (const tab of TABS) {
           mergedDeletedEx[tab] = [
             ...new Set([
               ...(deletedEx[tab] || []),
@@ -708,7 +690,6 @@ export default function App() {
             ]),
           ];
         }
-
         setHistory(uniqueMerged);
         setCustomExercises(mergedCustomEx);
         setDeletedExercises(mergedDeletedEx);
@@ -734,9 +715,7 @@ export default function App() {
     event.target.value = "";
   };
 
-  const triggerFileUpload = () => {
-    fileInputRef.current?.click();
-  };
+  const triggerFileUpload = () => fileInputRef.current?.click();
 
   const version = new Date();
   const day = version.getDate();
@@ -745,13 +724,13 @@ export default function App() {
   return (
     <div
       data-name="App-Container"
-      className={`font-sans min-h-screen py-5 px-3 transition-colors duration-300 ${darkMode ? "bg-[#1a1a1a]" : "bg-[#f9f7f4]"}`}
+      className={`font-sans min-h-screen py-5 px-3 pb-32 transition-colors duration-300 ${darkMode ? DARK.bg : "bg-[#f9f7f4]"}`}
     >
       <div data-name="Main-Content-Wrapper" className="max-w-[680px] mx-auto">
-        {/* current bVersion */}
         <p data-name="app-version" className="text-[12px] text-gray-500 mb-2">
-          V{month}.{day}
+          V{day}.{month}
         </p>
+
         {/* SECTION: Header & Stopwatch */}
         <div
           ref={stopwatchRef}
@@ -761,7 +740,7 @@ export default function App() {
 
         <div
           data-name="Sticky-Stopwatch-Wrapper"
-          className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isSticky ? "bg-opacity-95 shadow-md" : "pointer-events-none"} ${darkMode ? "bg-[#1a1a1a]" : "bg-[#f9f7f4]"}`}
+          className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isSticky ? "bg-opacity-95 shadow-md" : "pointer-events-none"} ${darkMode ? DARK.bg : "bg-[#f9f7f4]"}`}
         >
           {isSticky && (
             <div className="max-w-[680px] mx-auto px-3">
@@ -772,24 +751,8 @@ export default function App() {
                 {String(Math.floor(elapsed / 60)).padStart(2, "0")}:
                 {String(elapsed % 60).padStart(2, "0")}
               </div>
-              {view === "log" && (
-                <div className={`flex gap-1.5 pb-2`}>
-                  {TABS.map((t) => {
-                    const tabC = COLORS[t];
-                    return (
-                      <button
-                        key={t}
-                        onClick={() => switchTab(t)}
-                        className={`flex-1 py-2 px-1 rounded-xl border-2 cursor-pointer font-bold text-[12px] transition-all duration-200 ${activeTab === t ? `${tabC.borderAccent} ${tabC.bg} ${tabC.text}` : darkMode ? "border-transparent bg-[#333] text-[#888]" : "border-transparent bg-[#ede9e5] text-[#999]"}`}
-                      >
-                        {t}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
               <div
-                className={`h-[1px] ${darkMode ? "bg-[#333]" : "bg-[#e8e4e0]"}`}
+                className={`h-[1px] ${darkMode ? DARK.divider : "bg-[#e8e4e0]"}`}
               />
             </div>
           )}
@@ -807,14 +770,13 @@ export default function App() {
               totalSessionTime >= 2700
                 ? "assets/tired.png"
                 : totalSessionTime >= 1200
-                  ? "assets/Strong.png"
+                  ? "assets/strong.png"
                   : "assets/tajikarao.png"
             }
             className="block mx-auto w-20 cursor-pointer hover:opacity-80 transition-opacity"
             alt="Logo"
             onClick={() => setShowLogoModal(true)}
           />
-
           <div
             data-name="Stopwatch-Display"
             onClick={resetStopwatch}
@@ -825,16 +787,24 @@ export default function App() {
           </div>
         </div>
 
-        {/* SECTION: View Switcher (Log / History / Stats) */}
+        {/* SECTION: View Switcher */}
         <div
           data-name="View-Toggle-Navigation"
-          className={`flex mb-5 p-[5px] rounded-[14px] gap-[2px] ${darkMode ? "bg-[#2a2a2a]" : "bg-[#e0dbd6]"}`}
+          className={`flex mb-5 p-[5px] rounded-[14px] gap-[2px] ${darkMode ? DARK.bgTab : "bg-[#e0dbd6]"}`}
         >
           {["log", "history", "stats"].map((v) => (
             <button
               key={v}
               onClick={() => setView(v)}
-              className={`flex-1 py-[9px] rounded-[10px] border-none cursor-pointer text-[13px] font-semibold transition-all duration-200 ${view === v ? "bg-[#f0f0f0] text-[#333]" : darkMode ? "bg-transparent text-[#aaa]" : "bg-transparent text-[#888]"}`}
+              className={`flex-1 py-[9px] rounded-[10px] border-none cursor-pointer text-[13px] font-semibold transition-all duration-200 ${
+                view === v
+                  ? darkMode
+                    ? "bg-[#ffffff] text-[#000000]"
+                    : "bg-[#f0f0f0] text-[#333]"
+                  : darkMode
+                    ? `bg-transparent ${DARK.textSecondary}`
+                    : "bg-transparent text-[#888]"
+              }`}
             >
               {v === "log" ? "Log" : v === "history" ? "History" : "Stats"}
             </button>
@@ -844,22 +814,6 @@ export default function App() {
         {/* SECTION: Logging View */}
         {view === "log" && (
           <div data-name="Workout-Log-View" className="animate-fade-in">
-            {/* Subsection: Push/Pull/Legs/Cardio Selector */}
-            <div data-name="Category-Tabs" className="flex gap-1.5 mb-4">
-              {TABS.map((t) => {
-                const tabC = COLORS[t];
-                return (
-                  <button
-                    key={t}
-                    onClick={() => setActiveTab(t)}
-                    className={`flex-1 py-2.5 px-1 rounded-xl border-2 cursor-pointer font-bold text-[13px] transition-all duration-200 ${activeTab === t ? `${tabC.borderAccent} ${tabC.bg} ${tabC.text}` : darkMode ? "border-transparent bg-[#333] text-[#888]" : "border-transparent bg-[#ede9e5] text-[#999]"}`}
-                  >
-                    {t}
-                  </button>
-                );
-              })}
-            </div>
-
             {/* Subsection: List of Exercises */}
             <div data-name="Exercise-List" className="flex flex-col gap-3.5">
               {entries[activeTab].map((entry, eIdx) => {
@@ -870,9 +824,9 @@ export default function App() {
                   <div
                     data-name="Exercise-Card"
                     key={eIdx}
-                    className={`${darkMode ? "bg-[#262626]" : c.light} border-[1.5px] ${c.border} rounded-2xl p-4 transition-all duration-500 ease-in-out animate-fade-in`}
+                    className={`${darkMode ? DARK.bgCard : c.light} border-[1.5px] ${c.border} rounded-2xl p-4 transition-all duration-500 ease-in-out animate-fade-in`}
                   >
-                    {/* Exercise Header & Dropdown */}
+                    {/* Exercise Header */}
                     <div
                       data-name="Exercise-Selector-Row"
                       className="flex items-center gap-2 mb-2.5"
@@ -888,36 +842,34 @@ export default function App() {
                           setExerciseSearchQuery("");
                           setShowExerciseSelectModal(true);
                         }}
-                        className={`flex-1 py-[10px] px-4 rounded-[10px] border-[1.5px] flex items-center justify-between cursor-pointer outline-none transition-colors duration-200
-                          ${
-                            entry.exercise
-                              ? `${c.bg} ${c.border} ${c.text}`
-                              : darkMode
-                                ? "bg-[#373737] border-[#444] text-[#c8c8c8]"
-                                : "bg-white border-[#cac3c3] text-[#8e8e8e]"
-                          }`}
+                        className={`flex-1 py-[10px] px-4 rounded-[10px] border-[1.5px] flex items-center justify-between cursor-pointer outline-none transition-colors duration-200 ${
+                          entry.exercise
+                            ? `${c.bg} ${c.border} ${c.text}`
+                            : darkMode
+                              ? `${DARK.bgCardAlt} ${DARK.borderCard} ${DARK.textMuted}`
+                              : "bg-white border-[#cac3c3] text-[#8e8e8e]"
+                        }`}
                       >
-                        <span className="text-[14px] font-semibold">
+                        <span className="text-[16px] font-bold">
                           {entry.exercise || "Select exercise"}
                         </span>
                         <span
-                          className={`text-[20px] leading-none ${entry.exercise ? c.text : darkMode ? "text-[#555]" : "text-[#ededed]"}`}
+                          className={`text-[20px] leading-none ${entry.exercise ? c.text : darkMode ? DARK.textFaint : "text-[#ededed]"}`}
                         >
                           ›
                         </span>
                       </button>
-
                       {entries[activeTab].length > 1 && (
                         <button
                           onClick={() => removeExercise(eIdx)}
-                          className="bg-transparent border-none cursor-pointer text-[#ffdfdf] text-lg"
+                          className={`bg-transparent border-none cursor-pointer text-lg ${darkMode ? DARK.textMuted : "text-[#c63e3e]"}`}
                         >
                           ✕
                         </button>
                       )}
                     </div>
 
-                    {/* Previous Session Reference Stats */}
+                    {/* Previous Session Stats */}
                     {lastStats && (
                       <div
                         data-name="Previous-Stats-Box"
@@ -933,10 +885,9 @@ export default function App() {
                           className="flex flex-wrap gap-1.5 mb-2"
                         >
                           {lastStats.rows.map((r, i) => (
-                            // <span key={i} className={`bg-white text-[#777] rounded-lg py-[3px] px-2.5 text-xs border-[1px] ${c.border}`}>
                             <span
                               key={i}
-                              className={`${darkMode ? "bg-[#1a1a1a] text-[#aaa]" : "bg-white text-[#777]"} rounded-lg py-[3px] px-2.5 text-xs border-[1px] ${c.border}`}
+                              className={`${darkMode ? `${DARK.bgInput} ${DARK.textSecondary}` : "bg-white text-[#777]"} rounded-lg py-[3px] px-2.5 text-xs border-[1px] ${c.border}`}
                             >
                               Set {i + 1}:{" "}
                               {activeTab === "Cardio"
@@ -965,7 +916,7 @@ export default function App() {
                       </div>
                     )}
 
-                    {/* Current Workout Input Rows */}
+                    {/* Sets Input */}
                     {entry.exercise && (
                       <div
                         data-name="Sets-Input-Container"
@@ -975,9 +926,8 @@ export default function App() {
                           <div
                             data-name="Single-Set-Row"
                             key={rIdx}
-                            className={`${darkMode ? "bg-[#1e1e1e]" : "bg-white"} border ${c.border} rounded-xl p-3 animate-fade-in`}
+                            className={`${darkMode ? DARK.bgInput : "bg-white"} border ${c.border} rounded-xl p-3 animate-fade-in`}
                           >
-                            {/* Set header */}
                             <div className="flex items-center justify-between mb-2">
                               <span
                                 className={`text-[11px] font-bold uppercase tracking-[0.5px] ${c.text}`}
@@ -1000,7 +950,7 @@ export default function App() {
                                 {activeTab === "Cardio" ? "Dist" : "Weight"}
                               </span>
                               <span
-                                className={`${darkMode ? "bg-[#1a1a1a]" : "bg-white"} border-2 ${c.border} ${c.text} rounded-lg py-[5px] px-2.5 text-[18px] font-black min-w-[50px] text-center`}
+                                className={`${darkMode ? DARK.bgCard : "bg-white"} border-2 ${c.border} ${c.text} rounded-lg py-[5px] px-2.5 text-[18px] font-black min-w-[50px] text-center`}
                               >
                                 {row.weight || "—"}
                                 {activeTab === "Cardio" ? "km" : ""}
@@ -1063,7 +1013,7 @@ export default function App() {
                                 {activeTab === "Cardio" ? "Time" : "Reps"}
                               </span>
                               <span
-                                className={`${darkMode ? "bg-[#1a1a1a]" : "bg-white"} border-2 ${c.border} ${c.text} rounded-lg py-[5px] px-2.5 text-[18px] font-black min-w-[50px] text-center`}
+                                className={`${darkMode ? DARK.bgCard : "bg-white"} border-2 ${c.border} ${c.text} rounded-lg py-[5px] px-2.5 text-[18px] font-black min-w-[50px] text-center`}
                               >
                                 {row.reps || "—"}
                                 {activeTab === "Cardio" ? "m" : ""}
@@ -1125,7 +1075,7 @@ export default function App() {
                           onClick={() => addSet(eIdx)}
                           className={`w-full py-3 rounded-xl border-none ${c.fill} text-white text-[13px] font-bold cursor-pointer flex items-center justify-center gap-1.5`}
                         >
-                          <span className="text-[18px] font-light leading-none">
+                          <span className="text-[16px] font-light leading-none">
                             +
                           </span>{" "}
                           Another set
@@ -1137,22 +1087,13 @@ export default function App() {
               })}
             </div>
 
-            {/* Subsection: Global Log Actions */}
-            <div data-name="Logging-Actions">
-              <button
-                onClick={addExercise}
-                className={`mt-3 w-full py-3 rounded-xl border-none ${c.bg} ${c.text} text-[18px] font-bold cursor-pointer transition-all duration-200 flex items-center justify-center gap-2`}
-              >
-                + Add exercise
-              </button>
-
-              <button
-                onClick={saveSession}
-                className={`mt-3 w-full p-[13px] rounded-xl border-none text-white text-[18px] font-bold cursor-pointer transition-colors duration-300 ${saved ? "bg-[#a8d8a8]" : "bg-[#b0c4de]"}`}
-              >
-                {saved ? "✅ Session Saved!" : "Workout finished"}
-              </button>
-            </div>
+            {/* Add Exercise Button */}
+            <button
+              onClick={addExercise}
+              className={`mt-3 w-full py-3 rounded-xl border-none ${c.bg} ${c.text} text-[16px] font-bold cursor-pointer transition-all duration-200 flex items-center justify-center gap-2`}
+            >
+              + Add exercise
+            </button>
           </div>
         )}
 
@@ -1181,12 +1122,12 @@ export default function App() {
               className="hidden"
             />
             <div
-              className={`text-center text-sm mb-1 ${darkMode ? "text-[#666]" : "text-[#aaa]"}`}
+              className={`text-center text-sm mb-1 ${darkMode ? DARK.textMuted : "text-[#aaa]"}`}
             >
               📅 {formatDate(new Date())}
             </div>
             <div
-              className={`text-center text-sm mb-4 tabular-nums ${darkMode ? "text-[#666]" : "text-[#aaa]"}`}
+              className={`text-center text-sm mb-4 tabular-nums ${darkMode ? DARK.textMuted : "text-[#aaa]"}`}
             >
               ⏱ Current session:{" "}
               {String(Math.floor(totalSessionTime / 3600)).padStart(2, "0")}:
@@ -1198,13 +1139,12 @@ export default function App() {
             </div>
             {history.length === 0 ? (
               <div
-                data-name="Empty-History-State"
-                className={`text-center mt-[60px] text-[15px] transition-colors duration-300 ${darkMode ? "text-[#666]" : "text-[#bbb]"}`}
+                className={`text-center mt-[60px] text-[15px] ${darkMode ? DARK.textMuted : "text-[#bbb]"}`}
               >
                 <p>No sessions saved yet.</p>
                 <p className="text-[13px]">
-                  Complete a workout and hit Save Session, or upload a backup
-                  file!
+                  Complete a workout and hit Workout Finished, or upload a
+                  backup file!
                 </p>
               </div>
             ) : (
@@ -1213,26 +1153,24 @@ export default function App() {
                   <div
                     data-name="History-Session-Card"
                     key={session.id}
-                    className={`border-[1.5px] rounded-2xl mb-3.5 animate-fade-in transition-colors duration-300 overflow-hidden ${darkMode ? "bg-[#2a2a2a] border-[#444]" : "bg-white border-[#ede9e5]"}`}
+                    className={`border-[1.5px] rounded-2xl mb-3.5 animate-fade-in transition-colors duration-300 overflow-hidden ${darkMode ? `${DARK.bgCardAlt} ${DARK.borderCard}` : "bg-white border-[#ede9e5]"}`}
                   >
-                    {/* Collapsed header row - always visible */}
                     <div
                       data-name="History-Header"
                       onClick={() => toggleSession(session.id)}
-                      className={`flex justify-between items-center p-4 cursor-pointer select-none transition-colors duration-200 ${darkMode ? "hover:bg-[#333]" : "hover:bg-[#faf9f7]"}`}
+                      className={`flex justify-between items-center p-4 cursor-pointer select-none transition-colors duration-200 ${darkMode ? "hover:bg-[#1a1a1a]" : "hover:bg-[#faf9f7]"}`}
                     >
                       <div className="flex items-center gap-2.5 flex-1 min-w-0">
                         <span
-                          className={`text-base transition-colors duration-300 ${expandedSessions[session.id] ? "rotate-90" : "rotate-0"} inline-block transition-transform duration-200`}
+                          className={`text-base inline-block transition-transform duration-200 ${expandedSessions[session.id] ? "rotate-90" : "rotate-0"}`}
                         >
                           ›
                         </span>
                         <span
-                          className={`font-bold text-sm transition-colors duration-300 ${darkMode ? "text-[#bbb]" : "text-[#666]"}`}
+                          className={`font-bold text-sm ${darkMode ? DARK.textSecondary : "text-[#666]"}`}
                         >
                           📅 {formatDate(session.date)}
                         </span>
-                        {/* Category pills summary */}
                         {!expandedSessions[session.id] && (
                           <div className="flex gap-1 flex-wrap">
                             {TABS.map((tab) => {
@@ -1253,22 +1191,20 @@ export default function App() {
                           </div>
                         )}
                       </div>
-                      {/* delete session button */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           deleteSession(session.id);
                         }}
-                        className={`bg-transparent border-none cursor-pointer text-sm transition-colors duration-300 flex-none ml-2 ${darkMode ? "text-[#555]" : "text-[#ddd]"}`}
+                        className={`bg-transparent border-none cursor-pointer text-sm flex-none ml-2 ${darkMode ? DARK.textFaint : "text-[#ddd]"}`}
                       >
                         🗑
                       </button>
                     </div>
 
-                    {/* Expanded content */}
                     {expandedSessions[session.id] && (
                       <div
-                        className={`px-4 pb-4 border-t ${darkMode ? "border-[#444]" : "border-[#ede9e5]"}`}
+                        className={`px-4 pb-4 border-t ${darkMode ? DARK.borderCard : "border-[#ede9e5]"}`}
                       >
                         {TABS.map((tab) => {
                           const exs =
@@ -1293,7 +1229,7 @@ export default function App() {
                                   className="ml-2 mb-1.5"
                                 >
                                   <div
-                                    className={`font-semibold text-base transition-colors duration-300 ${darkMode ? "text-[#ddd]" : "text-[#666]"}`}
+                                    className={`font-semibold text-base ${darkMode ? DARK.textSecondary : "text-[#666]"}`}
                                   >
                                     {e.exercise}
                                   </div>
@@ -1332,7 +1268,6 @@ export default function App() {
         {/* SECTION: Stats View */}
         {view === "stats" && (
           <div data-name="Workout-Stats-View" className="animate-fade-in">
-            {/* <StatsView history={history} /> */}
             <StatsView history={history} darkMode={darkMode} />
           </div>
         )}
@@ -1341,10 +1276,10 @@ export default function App() {
         {showAddExerciseModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40">
             <div
-              className={`${darkMode ? "bg-[#1a1a1a]" : "bg-white"} rounded-2xl p-6 max-w-sm w-full mx-4`}
+              className={`${darkMode ? DARK.bgCard : "bg-white"} rounded-2xl p-6 max-w-sm w-full mx-4`}
             >
               <h2
-                className={`text-lg font-bold mb-4 ${darkMode ? "text-[#ccc]" : "text-[#333]"}`}
+                className={`text-lg font-bold mb-4 ${darkMode ? DARK.text : "text-[#333]"}`}
               >
                 Add New Exercise
               </h2>
@@ -1355,7 +1290,7 @@ export default function App() {
                 onKeyPress={(e) => e.key === "Enter" && addCustomExercise()}
                 placeholder="Exercise name"
                 autoFocus
-                className={`w-full py-2 px-3 rounded-lg border-[1.5px] ${darkMode ? "bg-[#262626] border-[#444] text-[#ccc]" : "bg-white border-[#ddd] text-[#333]"} mb-4 outline-none`}
+                className={`w-full py-2 px-3 rounded-lg border-[1.5px] ${darkMode ? `${DARK.bgCardAlt} ${DARK.borderCard} ${DARK.text}` : "bg-white border-[#ddd] text-[#333]"} mb-4 outline-none`}
               />
               <div className="flex gap-2">
                 <button
@@ -1363,7 +1298,7 @@ export default function App() {
                     setShowAddExerciseModal(false);
                     setNewExerciseName("");
                   }}
-                  className={`flex-1 py-2 rounded-lg font-semibold ${darkMode ? "bg-[#333] text-[#aaa]" : "bg-[#e8e4e0] text-[#666]"}`}
+                  className={`flex-1 py-2 rounded-lg font-semibold ${darkMode ? `${DARK.bgTabInactive} ${DARK.textSecondary}` : "bg-[#e8e4e0] text-[#666]"}`}
                 >
                   Cancel
                 </button>
@@ -1382,20 +1317,19 @@ export default function App() {
         {showDeleteExerciseModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40">
             <div
-              className={`${darkMode ? "bg-[#1a1a1a]" : "bg-white"} rounded-2xl p-6 max-w-sm w-full mx-4`}
+              className={`${darkMode ? DARK.bgCard : "bg-white"} rounded-2xl p-6 max-w-sm w-full mx-4`}
             >
               <h2
-                className={`text-lg font-bold mb-4 ${darkMode ? "text-[#ccc]" : "text-[#333]"}`}
+                className={`text-lg font-bold mb-4 ${darkMode ? DARK.text : "text-[#333]"}`}
               >
                 Delete/Restore Exercise
               </h2>
 
-              {/* Active Exercises */}
               {(EXERCISES[deleteExerciseTab]?.length > 0 ||
                 customExercises[deleteExerciseTab]?.length > 0) && (
                 <>
                   <div
-                    className={`text-sm font-semibold mb-2 ${darkMode ? "text-[#999]" : "text-[#888]"}`}
+                    className={`text-sm font-semibold mb-2 ${darkMode ? DARK.textSecondary : "text-[#888]"}`}
                   >
                     Active Exercises
                   </div>
@@ -1408,10 +1342,8 @@ export default function App() {
                       .map((ex) => (
                         <button
                           key={ex}
-                          onClick={() => {
-                            deleteExercise(ex);
-                          }}
-                          className={`w-full p-3 rounded-lg text-left font-semibold transition-colors ${darkMode ? "bg-[#262626] hover:bg-[#FA502F] text-[#ccc]" : "bg-[#f5f5f5] hover:bg-[#FA502F] text-[#333]"} hover:text-white`}
+                          onClick={() => deleteExercise(ex)}
+                          className={`w-full p-3 rounded-lg text-left font-semibold transition-colors ${darkMode ? `${DARK.bgCardAlt} ${DARK.text}` : "bg-[#f5f5f5] text-[#333]"} hover:bg-[#FA502F] hover:text-white`}
                         >
                           ❌ {ex}
                         </button>
@@ -1424,10 +1356,8 @@ export default function App() {
                       .map((ex) => (
                         <button
                           key={`custom-${ex}`}
-                          onClick={() => {
-                            deleteExercise(ex);
-                          }}
-                          className={`w-full p-3 rounded-lg text-left font-semibold transition-colors ${darkMode ? "bg-[#262626] hover:bg-[#FA502F] text-[#ccc]" : "bg-[#f5f5f5] hover:bg-[#FA502F] text-[#333]"} hover:text-white`}
+                          onClick={() => deleteExercise(ex)}
+                          className={`w-full p-3 rounded-lg text-left font-semibold transition-colors ${darkMode ? `${DARK.bgCardAlt} ${DARK.text}` : "bg-[#f5f5f5] text-[#333]"} hover:bg-[#FA502F] hover:text-white`}
                         >
                           ❌ {ex}
                         </button>
@@ -1436,11 +1366,10 @@ export default function App() {
                 </>
               )}
 
-              {/* Deleted Exercises */}
               {deletedExercises[deleteExerciseTab]?.length > 0 && (
                 <>
                   <div
-                    className={`text-sm font-semibold mb-2 ${darkMode ? "text-[#999]" : "text-[#888]"}`}
+                    className={`text-sm font-semibold mb-2 ${darkMode ? DARK.textSecondary : "text-[#888]"}`}
                   >
                     Deleted Exercises (click to restore)
                   </div>
@@ -1448,10 +1377,8 @@ export default function App() {
                     {deletedExercises[deleteExerciseTab]?.map((ex) => (
                       <button
                         key={`deleted-${ex}`}
-                        onClick={() => {
-                          restoreExercise(ex);
-                        }}
-                        className={`w-full p-3 rounded-lg text-left font-semibold transition-colors ${darkMode ? "bg-[#333] hover:bg-[#4CAF50] text-[#aaa]" : "bg-[#e8e4e0] hover:bg-[#4CAF50] text-[#666]"} hover:text-white`}
+                        onClick={() => restoreExercise(ex)}
+                        className={`w-full p-3 rounded-lg text-left font-semibold transition-colors ${darkMode ? `${DARK.bgTabInactive} ${DARK.textSecondary}` : "bg-[#e8e4e0] text-[#666]"} hover:bg-[#4CAF50] hover:text-white`}
                       >
                         ↩️ {ex}
                       </button>
@@ -1464,7 +1391,7 @@ export default function App() {
                 customExercises[deleteExerciseTab]?.length === 0 &&
                 deletedExercises[deleteExerciseTab]?.length === 0 && (
                   <p
-                    className={`mb-4 ${darkMode ? "text-[#aaa]" : "text-[#666]"}`}
+                    className={`mb-4 ${darkMode ? DARK.textSecondary : "text-[#666]"}`}
                   >
                     No exercises to manage.
                   </p>
@@ -1472,13 +1399,14 @@ export default function App() {
 
               <button
                 onClick={() => setShowDeleteExerciseModal(false)}
-                className={`w-full py-2 rounded-lg font-semibold ${darkMode ? "bg-[#333] text-[#aaa]" : "bg-[#e8e4e0] text-[#666]"}`}
+                className={`w-full py-2 rounded-lg font-semibold ${darkMode ? `${DARK.bgTabInactive} ${DARK.textSecondary}` : "bg-[#e8e4e0] text-[#666]"}`}
               >
                 Close
               </button>
             </div>
           </div>
         )}
+
         {/* Exercise Select Modal */}
         {showExerciseSelectModal &&
           selectingExerciseIdx !== null &&
@@ -1498,12 +1426,11 @@ export default function App() {
             return (
               <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-40 sm:items-center">
                 <div
-                  className={`${darkMode ? "bg-[#1a1a1a]" : "bg-white"} rounded-t-3xl sm:rounded-2xl p-5 w-full sm:max-w-sm max-h-[80vh] flex flex-col`}
+                  className={`${darkMode ? DARK.bgCard : "bg-white"} rounded-t-3xl sm:rounded-2xl p-5 w-full sm:max-w-sm max-h-[80vh] flex flex-col`}
                 >
-                  {/* Modal Header */}
                   <div className="flex items-center justify-between mb-4">
                     <h2
-                      className={`text-lg font-bold ${darkMode ? "text-[#ccc]" : "text-[#333]"}`}
+                      className={`text-lg font-bold ${darkMode ? DARK.text : "text-[#333]"}`}
                     >
                       Select Exercise
                       <span className={`ml-2 text-sm font-normal ${col.text}`}>
@@ -1512,26 +1439,22 @@ export default function App() {
                     </h2>
                     <button
                       onClick={() => setShowExerciseSelectModal(false)}
-                      className={`text-xl bg-transparent border-none cursor-pointer ${darkMode ? "text-[#666]" : "text-[#bbb]"}`}
+                      className={`text-xl bg-transparent border-none cursor-pointer ${darkMode ? DARK.textMuted : "text-[#bbb]"}`}
                     >
                       ✕
                     </button>
                   </div>
-
-                  {/* Search */}
                   <input
                     type="text"
                     value={exerciseSearchQuery}
                     onChange={(e) => setExerciseSearchQuery(e.target.value)}
                     placeholder="Search exercises..."
-                    className={`w-full py-2 px-3 rounded-lg border-[1.5px] ${col.border} ${darkMode ? "bg-[#262626] text-[#ccc]" : "bg-[#f9f7f4] text-[#333]"} mb-3 outline-none text-sm`}
+                    className={`w-full py-2 px-3 rounded-lg border-[1.5px] ${col.border} ${darkMode ? `${DARK.bgCardAlt} ${DARK.text}` : "bg-[#f9f7f4] text-[#333]"} mb-3 outline-none text-sm`}
                   />
-
-                  {/* Exercise List */}
                   <div className="overflow-y-auto flex-1 flex flex-col gap-2">
                     {filtered.length === 0 && (
                       <p
-                        className={`text-center text-sm mt-4 ${darkMode ? "text-[#666]" : "text-[#bbb]"}`}
+                        className={`text-center text-sm mt-4 ${darkMode ? DARK.textMuted : "text-[#bbb]"}`}
                       >
                         No exercises found.
                       </p>
@@ -1543,14 +1466,14 @@ export default function App() {
                           updateEntry(selectingExerciseIdx, "exercise", ex);
                           setShowExerciseSelectModal(false);
                         }}
-                        className={`w-full p-3 rounded-xl text-left font-semibold text-sm transition-colors
-                ${
-                  entries[activeTab][selectingExerciseIdx]?.exercise === ex
-                    ? `${col.bg} ${col.text} border-2 ${col.borderAccent}`
-                    : darkMode
-                      ? "bg-[#262626] text-[#ccc] hover:bg-[#333]"
-                      : "bg-[#f5f5f5] text-[#444] hover:bg-[#ede9e5]"
-                }`}
+                        className={`w-full p-3 rounded-xl text-left font-semibold text-sm transition-colors ${
+                          entries[activeTab][selectingExerciseIdx]?.exercise ===
+                          ex
+                            ? `${col.bg} ${col.text} border-2 ${col.borderAccent}`
+                            : darkMode
+                              ? `${DARK.bgCardAlt} ${DARK.text} hover:${DARK.bgTabInactive}`
+                              : "bg-[#f5f5f5] text-[#444] hover:bg-[#ede9e5]"
+                        }`}
                       >
                         {ex}
                         {entries[activeTab][selectingExerciseIdx]?.exercise ===
@@ -1558,8 +1481,6 @@ export default function App() {
                       </button>
                     ))}
                   </div>
-
-                  {/* Footer Actions */}
                   <div className="flex gap-2 mt-4 pt-4 border-t border-[#e0dbd6]">
                     <button
                       onClick={() => {
@@ -1567,7 +1488,7 @@ export default function App() {
                         setNewExerciseTab(activeTab);
                         setShowAddExerciseModal(true);
                       }}
-                      className={`flex-1 py-2.5 rounded-xl font-semibold text-sm ${darkMode ? "bg-[#333] text-[#aaa]" : "bg-[#e8e4e0] text-[#666]"}`}
+                      className={`flex-1 py-2.5 rounded-xl font-semibold text-sm ${darkMode ? `${DARK.bgTabInactive} ${DARK.textSecondary}` : "bg-[#e8e4e0] text-[#666]"}`}
                     >
                       ➕ Add New
                     </button>
@@ -1577,7 +1498,7 @@ export default function App() {
                         setDeleteExerciseTab(activeTab);
                         setShowDeleteExerciseModal(true);
                       }}
-                      className={`flex-1 py-2.5 rounded-xl font-semibold text-sm ${darkMode ? "bg-[#333] text-[#aaa]" : "bg-[#e8e4e0] text-[#666]"}`}
+                      className={`flex-1 py-2.5 rounded-xl font-semibold text-sm ${darkMode ? `${DARK.bgTabInactive} ${DARK.textSecondary}` : "bg-[#e8e4e0] text-[#666]"}`}
                     >
                       ❌ Delete
                     </button>
@@ -1594,14 +1515,13 @@ export default function App() {
             onClick={() => setShowLogoModal(false)}
           >
             <div
-              className={`${darkMode ? "bg-[#1a1a1a]" : "bg-white"} rounded-t-3xl w-full max-h-[85vh] flex flex-col overflow-hidden`}
+              className={`${darkMode ? DARK.bgCard : "bg-white"} rounded-t-3xl w-full max-h-[85vh] flex flex-col overflow-hidden`}
               onClick={(e) => e.stopPropagation()}
             >
               <div className="w-10 h-1 bg-[#e0dbd6] rounded-full mx-auto mt-3 mb-0" />
-
               <div className="overflow-y-auto flex-1 p-4">
                 <div
-                  className={`${darkMode ? "bg-[#262626]" : "bg-[#fff5f5]"} rounded-2xl p-5`}
+                  className={`${darkMode ? DARK.bgCardAlt : "bg-[#fff5f5]"} rounded-2xl p-5`}
                 >
                   <div className="flex flex-col items-center mb-4">
                     <img
@@ -1616,13 +1536,11 @@ export default function App() {
                       God of Strength & Athletics
                     </div>
                   </div>
-
                   <div
-                    className={`h-[0.5px] ${darkMode ? "bg-[#444]" : "bg-[#d3cfcf]"} mb-4`}
+                    className={`h-[0.5px] ${darkMode ? DARK.divider : "bg-[#d3cfcf]"} mb-4`}
                   />
-
                   <p
-                    className={`text-[16px] text-center leading-relaxed ${darkMode ? "text-[#aaa]" : "text-[#c47878]"}`}
+                    className={`text-[16px] text-center leading-relaxed ${darkMode ? DARK.textSecondary : "text-[#c47878]"}`}
                   >
                     こんにちは!
                     <br /> I am Ame-no-Tajikarao, the Shinto god of strength and
@@ -1631,58 +1549,57 @@ export default function App() {
                     boulder like I did.
                   </p>
                   <p
-                    className={`text-[16px] mt-6 text-center leading-relaxed ${darkMode ? "text-[#aaa]" : "text-[#c47878]"}`}
+                    className={`text-[16px] mt-6 text-center leading-relaxed ${darkMode ? DARK.textSecondary : "text-[#c47878]"}`}
                   >
-                    {" "}
                     This is my Story
                   </p>
                   <p
-                    className={`text-[16px] mt-6 text-center leading-relaxed ${darkMode ? "text-[#aaa]" : "text-[#c47878]"}`}
+                    className={`text-[16px] mt-6 text-center leading-relaxed ${darkMode ? DARK.textSecondary : "text-[#c47878]"}`}
                   >
                     One day Susanoo, the Shinto god of storms and the sea, went
                     on a destructive rampage.
                     <img
                       src="/Bruscles/assets/story1.png"
                       className="w-60 m-3 mx-auto rounded-3xl"
-                      alt="Ame-no-Tajikarao"
+                      alt="story1"
                     />
                   </p>
                   <p
-                    className={`text-[16px] mt-6 text-center leading-relaxed ${darkMode ? "text-[#aaa]" : "text-[#c47878]"}`}
+                    className={`text-[16px] mt-6 text-center leading-relaxed ${darkMode ? DARK.textSecondary : "text-[#c47878]"}`}
                   >
-                    Heatbroken by her brothers actions, Amaterasu, the Shinto
-                    goddess of the sun and Susanoo's sister, hid herself in a
-                    cave, plunging the world into darkness.
+                    Heartbroken by her brother's actions, Amaterasu, the Shinto
+                    goddess of the sun, hid herself in a cave, plunging the
+                    world into darkness.
                     <img
                       src="/Bruscles/assets/story2.png"
                       className="w-72 m-3 mx-auto rounded-3xl"
-                      alt="Ame-no-Tajikarao"
+                      alt="story2"
                     />
                   </p>
                   <p
-                    className={`text-[16px] mt-6 text-center leading-relaxed ${darkMode ? "text-[#aaa]" : "text-[#c47878]"}`}
+                    className={`text-[16px] mt-6 text-center leading-relaxed ${darkMode ? DARK.textSecondary : "text-[#c47878]"}`}
                   >
                     Millions of gods gathered outside to come up with a plan.
-                    Realizing they couldn’t force her out..
+                    Realising they couldn't force her out..
                     <img
                       src="/Bruscles/assets/story3.png"
                       className="w-64 m-3 mx-auto rounded-3xl"
-                      alt="Ame-no-Tajikarao"
+                      alt="story3"
                     />
                   </p>
                   <p
-                    className={`text-[16px] mt-6 text-center leading-relaxed ${darkMode ? "text-[#aaa]" : "text-[#c47878]"}`}
+                    className={`text-[16px] mt-6 text-center leading-relaxed ${darkMode ? DARK.textSecondary : "text-[#c47878]"}`}
                   >
                     They threw a wild party with music, dancing, and a mirror to
                     bait her curiosity, hoping to lure her out of the cave.
                     <img
                       src="/Bruscles/assets/story3.1.png"
                       className="w-64 m-3 mx-auto rounded-3xl"
-                      alt="Ame-no-Tajikarao"
+                      alt="story3.1"
                     />
                   </p>
                   <p
-                    className={`text-[16px] mt-6 text-center leading-relaxed ${darkMode ? "text-[#aaa]" : "text-[#c47878]"}`}
+                    className={`text-[16px] mt-6 text-center leading-relaxed ${darkMode ? DARK.textSecondary : "text-[#c47878]"}`}
                   >
                     When all else failed, Ame-no-Tajikarao, the god of physical
                     strength, unleashed his unmatched power. With a mighty
@@ -1692,15 +1609,14 @@ export default function App() {
                     <img
                       src="/Bruscles/assets/story4.png"
                       className="w-64 m-3 mx-auto rounded-3xl"
-                      alt="Ame-no-Tajikarao"
+                      alt="story4"
                     />
                   </p>
                 </div>
               </div>
-
               <div className="p-4 pt-2">
                 <div
-                  className={`text-[11px] text-center uppercase tracking-[0.5px] mb-3 ${darkMode ? "text-[#555]" : "text-[#ccc]"}`}
+                  className={`text-[11px] text-center uppercase tracking-[0.5px] mb-3 ${darkMode ? DARK.textFaint : "text-[#ccc]"}`}
                 >
                   Taji Trainer · Made by Bman
                 </div>
@@ -1710,6 +1626,46 @@ export default function App() {
                 >
                   Back to training
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Fixed Bottom Bar */}
+        {view === "log" && (
+          <div
+            className={`fixed bottom-0 left-0 right-0 z-50 ${darkMode ? `${DARK.bgCard} ${DARK.borderCard}` : "bg-white border-[#E4E7EF]"} border-t`}
+          >
+            <div className="max-w-[680px] mx-auto px-3 pt-2 pb-6">
+              {Object.values(entries).some((tab) =>
+                tab.some((e) => e.exercise),
+              ) && (
+                <button
+                  onClick={saveSession}
+                  className={`w-full py-3 rounded-xl border-none text-white text-[14px] font-bold cursor-pointer transition-all duration-300 mb-2 ${saved ? "bg-[#a8d8a8]" : "bg-[#b0c4de]"}`}
+                >
+                  {saved ? "✅ Session Saved!" : "Workout Finished"}
+                </button>
+              )}
+              <div className="flex gap-1.5">
+                {TABS.map((tab) => {
+                  const tabC = COLORS[tab];
+                  return (
+                    <button
+                      key={tab}
+                      onClick={() => switchTab(tab)}
+                      className={`flex-1 py-2.5 px-1 rounded-xl border-2 cursor-pointer font-bold text-[13px] transition-all duration-200 ${
+                        activeTab === tab
+                          ? `${tabC.borderAccent} ${tabC.bg} ${tabC.text}`
+                          : darkMode
+                            ? `border-transparent ${DARK.bgTabInactive} ${DARK.textMuted}`
+                            : "border-transparent bg-[#ECEEF4] text-[#999]"
+                      }`}
+                    >
+                      {tab}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>

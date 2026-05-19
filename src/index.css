@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+
+/* this is to stop an accidental refresh when using the app */
+html, body {
+  overscroll-behavior-y: none;
+}
+
 body {
   font-family: "'Segoe UI', sans-serif";
 }
@@ -18,3 +24,5 @@ body {
 .animate-fade-in {
   animation: fadeIn 0.3s ease-in-out;
 }
+
+
