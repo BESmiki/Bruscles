@@ -342,6 +342,8 @@ export default function App() {
   const [elapsed, setElapsed] = useState(0);
   const [darkMode, setDarkMode] = useState(false);
   const [startTime, setStartTime] = useState(Date.now());
+  const [showFullscreenStopwatch, setShowFullscreenStopwatch] =
+    useState(false);
   const [isSticky, setIsSticky] = useState(false);
   const [customExercises, setCustomExercises] = useState({
     Push: [],
@@ -394,6 +396,40 @@ export default function App() {
     );
     return () => clearInterval(t);
   }, [startTime]);
+
+  useEffect(() => {
+    let inactivityTimer;
+    const events = ["pointerdown", "mousemove", "keydown", "scroll", "touchstart"];
+
+    const resetInactivityTimer = (event) => {
+      const pressedFullscreenTimer = event?.target?.closest?.(
+        "[data-fullscreen-stopwatch-timer]",
+      );
+      if (!pressedFullscreenTimer) {
+        setShowFullscreenStopwatch(false);
+      }
+      clearTimeout(inactivityTimer);
+      inactivityTimer = setTimeout(() => {
+        if (document.visibilityState === "visible") {
+          setShowFullscreenStopwatch(true);
+        }
+      }, 15000);
+    };
+
+    resetInactivityTimer();
+    events.forEach((eventName) =>
+      window.addEventListener(eventName, resetInactivityTimer, {
+        passive: true,
+      }),
+    );
+
+    return () => {
+      clearTimeout(inactivityTimer);
+      events.forEach((eventName) =>
+        window.removeEventListener(eventName, resetInactivityTimer),
+      );
+    };
+  }, []);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -733,6 +769,29 @@ export default function App() {
       data-name="App-Container"
       className={`font-sans min-h-screen py-5 px-3 pb-52 transition-colors duration-300 ${darkMode ? DARK.bg : "bg-[#f9f7f4]"}`}
     >
+      {showFullscreenStopwatch && (
+        <div
+          data-name="Fullscreen-Stopwatch"
+          onClick={() => setShowFullscreenStopwatch(false)}
+          className={`fixed inset-0 z-[100] flex items-center justify-center animate-fade-in ${darkMode ? DARK.bg : "bg-[#f9f7f4]"}`}
+        >
+          <div
+            data-fullscreen-stopwatch-timer
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              e.nativeEvent.stopImmediatePropagation();
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              resetStopwatch();
+            }}
+            className={`text-[96px] sm:text-[140px] font-bold ${c.text} tracking-[2px] tabular-nums cursor-pointer`}
+          >
+            {String(Math.floor(elapsed / 60)).padStart(2, "0")}:
+            {String(elapsed % 60).padStart(2, "0")}
+          </div>
+        </div>
+      )}
       <div data-name="Main-Content-Wrapper" className="max-w-[680px] mx-auto">
         <p data-name="app-version" className="text-[12px] text-gray-500 mb-2">
           V{day}.{month}
