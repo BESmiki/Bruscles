@@ -76,7 +76,7 @@ const DARK = {
   borderCard: "border-[#2a2a2a]", // card borders
   text: "text-[#f0f0f0]", // primary text
   textSecondary: "text-[#aaaaaa]", // secondary text
-  textMuted: "text-[#666666]", // muted/placeholder text
+  textMuted: "text-[#b5b5b5]", // muted/placeholder text
   textFaint: "text-[#333333]", // very faint text / delete buttons
   divider: "bg-[#222222]", // divider lines
 };
@@ -856,11 +856,7 @@ export default function App() {
                         <span className="text-[16px] font-bold">
                           {entry.exercise}
                         </span>
-                        <span
-                          className="hidden"
-                        >
-                          ›
-                        </span>
+                        <span className="hidden">›</span>
                       </div>
                       {entries[activeTab].length > 1 && (
                         <button
@@ -1647,39 +1643,32 @@ export default function App() {
                 className="mb-2 flex flex-col gap-2"
               >
                 {showBottomExerciseSelector && (
-                <div
-                  data-name="Exercise-Selector-Row"
-                  className="flex items-center gap-2"
-                >
-                  <span
-                    className={`${c.bg} ${c.text} rounded-[20px] py-0.5 px-2.5 font-bold text-xs`}
+                  <div
+                    data-name="Exercise-Selector-Row"
+                    className="flex items-center gap-2"
                   >
-                    #{bottomExerciseIdx + 1}
-                  </span>
-                  <button
-                    onClick={() => {
-                      setSelectingExerciseIdx(bottomExerciseIdx);
-                      setExerciseSearchQuery("");
-                      setShowExerciseSelectModal(true);
-                    }}
-                    className={`flex-1 py-[10px] px-4 rounded-[10px] border-[1.5px] flex items-center justify-between cursor-pointer outline-none transition-colors duration-200 ${
-                      bottomExercise.exercise
-                        ? `${c.bg} ${c.border} ${c.text}`
-                        : darkMode
-                          ? `${DARK.bgCardAlt} ${DARK.borderCard} ${DARK.textMuted}`
-                          : "bg-white border-[#cac3c3] text-[#8e8e8e]"
-                    }`}
-                  >
-                    <span className="text-[16px] font-bold">
-                      {bottomExercise.exercise || "Select exercise"}
-                    </span>
-                    <span
-                      className={`text-[20px] leading-none ${bottomExercise.exercise ? c.text : darkMode ? DARK.textFaint : "text-[#ededed]"}`}
+                    <button
+                      onClick={() => {
+                        setSelectingExerciseIdx(bottomExerciseIdx);
+                        setExerciseSearchQuery("");
+                        setShowExerciseSelectModal(true);
+                      }}
+                      className={`flex-1 py-[10px] px-4 rounded-[10px] border-[1.5px] flex items-center justify-between cursor-pointer outline-none transition-colors duration-200 ${
+                        bottomExercise.exercise
+                          ? `${c.bg} ${c.border} ${c.text}`
+                          : darkMode
+                            ? `${DARK.bgCardAlt} ${DARK.borderCard} ${DARK.textMuted}`
+                            : "bg-white border-[#cac3c3] text-[#8e8e8e]"
+                      }`}
                     >
-                      â€º
-                    </span>
-                  </button>
-                </div>
+                      <span className="block w-full text-center text-[16px] font-bold">
+                        {bottomExercise.exercise || "Select exercise"}
+                      </span>
+                      <span
+                        className={`text-[20px] leading-none ${bottomExercise.exercise ? c.text : darkMode ? DARK.textFaint : "text-[#ededed]"}`}
+                      ></span>
+                    </button>
+                  </div>
                 )}
                 {canAddExercise && (
                   <button

@@ -24,13 +24,13 @@ change push/pull menu to bottom of the screen. notes in claude.
 when copilot is back - 
 change darkmode to black and white but also refactor to make variables so i can change colour in one location.
 add months to the history tab
-Workout finished only appears when workout is available
+
 empty sets are counting as sets in history
 add "most improved" metric in stats that calculates the difference in weight from the lowest to the "best" set and display it as a percentage. 100% being double the original weight.
 more mobile friendly 
 remove components into proper files lol 
 
-move select exercise to bottom of page
+
 have + add exercise only show once set #1 has been selected
 
 fix storybook exit button
