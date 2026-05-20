@@ -436,8 +436,8 @@ export default function App() {
         if (document.visibilityState === "visible") {
           setShowFullscreenStopwatch(true);
         }
-        // reset to 1500
-      }, 99999);
+        // reset to 15000
+      }, 15000);
     };
 
     resetInactivityTimer();
@@ -1580,7 +1580,7 @@ export default function App() {
                       </button>
                     ))}
                   </div>
-                  <div 
+                  <div
                     className={`flex gap-2 pt-3 border-t border-[#e0dbd6] mt-auto sticky bottom-0 ${darkMode ? DARK.bgCard : "bg-white"}`}
                   >
                     <button
@@ -1589,9 +1589,9 @@ export default function App() {
                         setNewExerciseTab(activeTab);
                         setShowAddExerciseModal(true);
                       }}
-                      className={`flex-1 py-2.5 rounded-xl font-semibold text-sm ${darkMode ? `${DARK.bgTabInactive} ${DARK.textSecondary}` : "bg-[#e8e4e0] text-[#666]"}`}
+                      className={`flex-1 py-2.5 rounded-xl font-semibold text-sm ${darkMode ? `${DARK.bgTabInactive} ${DARK.textSecondary}` : "bg-[#e1f6e5] text-[#666]"}`}
                     >
-                      ➕ Add New
+                      Add New
                     </button>
                     <button
                       onClick={() => {
@@ -1599,9 +1599,9 @@ export default function App() {
                         setDeleteExerciseTab(activeTab);
                         setShowDeleteExerciseModal(true);
                       }}
-                      className={`flex-1 py-2.5 rounded-xl font-semibold text-sm ${darkMode ? `${DARK.bgTabInactive} ${DARK.textSecondary}` : "bg-[#e8e4e0] text-[#666]"}`}
+                      className={`flex-1 py-2.5 rounded-xl font-semibold text-sm ${darkMode ? `${DARK.bgTabInactive} ${DARK.textSecondary}` : "bg-[#f3dbdb] text-[#666]"}`}
                     >
-                      ❌ Delete
+                      Delete
                     </button>
                   </div>
                 </div>
@@ -1741,7 +1741,9 @@ export default function App() {
               <div
                 data-name="Bottom-Exercise-Selector"
                 className={
-                  showExerciseSelectModal ? "hidden" : "mb-2 flex flex-col gap-2"
+                  showExerciseSelectModal
+                    ? "hidden"
+                    : "mb-2 flex flex-col gap-2"
                 }
               >
                 <button
@@ -1764,10 +1766,10 @@ export default function App() {
                   }}
                   className={`w-full py-3 rounded-xl border-none ${c.bg} ${c.text} text-[16px] font-bold cursor-pointer transition-all duration-200 flex items-center justify-center gap-2`}
                 >
-                  + Add exercise
+                  + Add Workout
                 </button>
               </div>
-              
+
               <div className="flex gap-1.5">
                 {TABS.map((tab) => {
                   const tabC = COLORS[tab];
