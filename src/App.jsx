@@ -342,8 +342,7 @@ export default function App() {
   const [elapsed, setElapsed] = useState(0);
   const [darkMode, setDarkMode] = useState(false);
   const [startTime, setStartTime] = useState(Date.now());
-  const [showFullscreenStopwatch, setShowFullscreenStopwatch] =
-    useState(false);
+  const [showFullscreenStopwatch, setShowFullscreenStopwatch] = useState(false);
   const [isSticky, setIsSticky] = useState(false);
   const [customExercises, setCustomExercises] = useState({
     Push: [],
@@ -366,12 +365,25 @@ export default function App() {
   const [showDeleteExerciseModal, setShowDeleteExerciseModal] = useState(false);
   const [expandedSessions, setExpandedSessions] = useState({});
   const [showLogoModal, setShowLogoModal] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(false);
 
   const toggleSession = (id) =>
     setExpandedSessions((prev) => ({ ...prev, [id]: !prev[id] }));
 
   const switchTab = (tab) => {
     const scrollY = window.scrollY;
+    if (showExerciseSelectModal) {
+      const tabEntries = entries[tab] || [emptyEntry()];
+      const emptyIdx = tabEntries.findIndex((entry) => !entry.exercise);
+      setSelectingExerciseIdx(emptyIdx === -1 ? tabEntries.length : emptyIdx);
+      setExerciseSearchQuery("");
+      if (emptyIdx === -1) {
+        setEntries((prev) => ({
+          ...prev,
+          [tab]: [...(prev[tab] || []), emptyEntry()],
+        }));
+      }
+    }
     setActiveTab(tab);
     requestAnimationFrame(() =>
       window.scrollTo({ top: scrollY, behavior: "instant" }),
@@ -399,21 +411,33 @@ export default function App() {
 
   useEffect(() => {
     let inactivityTimer;
-    const events = ["pointerdown", "mousemove", "keydown", "scroll", "touchstart"];
+    const events = [
+      "pointerdown",
+      "mousemove",
+      "keydown",
+      "scroll",
+      "touchstart",
+    ];
 
     const resetInactivityTimer = (event) => {
       const pressedFullscreenTimer = event?.target?.closest?.(
         "[data-fullscreen-stopwatch-timer]",
       );
-      if (!pressedFullscreenTimer) {
+      if (!pressedFullscreenTimer && showFullscreenStopwatch) {
         setShowFullscreenStopwatch(false);
+        setIsBlocked(true);
+        // screen inactivity after stopwatch
+        setTimeout(() => setIsBlocked(false), 600);
+      } else if (!pressedFullscreenTimer) {
+        // normal activity, just reset timer
       }
       clearTimeout(inactivityTimer);
       inactivityTimer = setTimeout(() => {
         if (document.visibilityState === "visible") {
           setShowFullscreenStopwatch(true);
         }
-      }, 15000);
+        // reset to 1500
+      }, 99999);
     };
 
     resetInactivityTimer();
@@ -887,7 +911,22 @@ export default function App() {
 
         {/* SECTION: Logging View */}
         {view === "log" && (
-          <div data-name="Workout-Log-View" className="animate-fade-in">
+          <div
+            data-name="Workout-Log-View"
+            className={`animate-fade-in ${isBlocked ? "pointer-events-none" : ""}`}
+          >
+            {" "}
+            {/* save session button */}
+            {Object.values(entries).some((tab) =>
+              tab.some((e) => e.exercise),
+            ) && (
+              <button
+                onClick={saveSession}
+                className={`w-full py-3 rounded-xl border-none text-white text-[14px] font-bold cursor-pointer transition-all duration-300 mb-2 ${saved ? "bg-[#a8d8a8]" : "bg-[#b0c4de]"}`}
+              >
+                {saved ? "✅ Session Saved!" : "Workout Finished"}
+              </button>
+            )}
             {/* Subsection: List of Exercises */}
             <div data-name="Exercise-List" className="flex flex-col gap-3.5">
               {entries[activeTab].map((entry, eIdx) => {
@@ -925,7 +964,8 @@ export default function App() {
                         </span>
                         <span className="hidden">›</span>
                       </div>
-                      {entries[activeTab].length > 1 && (
+                      {entries[activeTab].filter((e) => e.exercise).length >
+                        1 && (
                         <button
                           onClick={() => removeExercise(eIdx)}
                           className={`bg-transparent border-none cursor-pointer text-lg ${darkMode ? DARK.textMuted : "text-[#c63e3e]"}`}
@@ -1332,7 +1372,7 @@ export default function App() {
 
         {/* Add Exercise Modal */}
         {showAddExerciseModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div
               className={`${darkMode ? DARK.bgCard : "bg-white"} rounded-2xl p-6 max-w-sm w-full mx-4`}
             >
@@ -1373,7 +1413,7 @@ export default function App() {
 
         {/* Delete/Restore Exercise Modal */}
         {showDeleteExerciseModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div
               className={`${darkMode ? DARK.bgCard : "bg-white"} rounded-2xl p-6 max-w-sm w-full mx-4`}
             >
@@ -1482,9 +1522,10 @@ export default function App() {
             );
             const col = COLORS[activeTab];
             return (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-40 sm:items-center">
+              <div className="fixed inset-x-0 top-0 bottom-[76px] bg-black bg-opacity-50 flex items-end justify-center z-40 sm:items-center pointer-events-none">
                 <div
-                  className={`${darkMode ? DARK.bgCard : "bg-white"} rounded-t-3xl sm:rounded-2xl p-5 w-full sm:max-w-sm max-h-[80vh] flex flex-col`}
+                  className={`${darkMode ? DARK.bgCard : "bg-white"} rounded-t-3xl sm:rounded-2xl p-5 w-full sm:max-w-sm flex flex-col overflow-hidden pointer-events-auto`}
+                  style={{ maxHeight: "80vh" }}
                 >
                   <div className="flex items-center justify-between mb-4">
                     <h2
@@ -1509,7 +1550,7 @@ export default function App() {
                     placeholder="Search exercises..."
                     className={`w-full py-2 px-3 rounded-lg border-[1.5px] ${col.border} ${darkMode ? `${DARK.bgCardAlt} ${DARK.text}` : "bg-[#f9f7f4] text-[#333]"} mb-3 outline-none text-sm`}
                   />
-                  <div className="overflow-y-auto flex-1 flex flex-col gap-2">
+                  <div className="min-h-0 overflow-y-auto overscroll-contain flex-1 flex flex-col gap-2 mb-2 pr-1">
                     {filtered.length === 0 && (
                       <p
                         className={`text-center text-sm mt-4 ${darkMode ? DARK.textMuted : "text-[#bbb]"}`}
@@ -1539,7 +1580,9 @@ export default function App() {
                       </button>
                     ))}
                   </div>
-                  <div className="flex gap-2 mt-4 pt-4 border-t border-[#e0dbd6]">
+                  <div 
+                    className={`flex gap-2 pt-3 border-t border-[#e0dbd6] mt-auto sticky bottom-0 ${darkMode ? DARK.bgCard : "bg-white"}`}
+                  >
                     <button
                       onClick={() => {
                         setShowExerciseSelectModal(false);
@@ -1690,62 +1733,41 @@ export default function App() {
         )}
 
         {/* Fixed Bottom Bar */}
-        {view === "log" && (
+        {view === "log" && !showLogoModal && (
           <div
-            className={`fixed bottom-0 left-0 right-0 z-50 ${darkMode ? `${DARK.bgCard} ${DARK.borderCard}` : "bg-white border-[#E4E7EF]"} border-t`}
+            className={`fixed bottom-0 left-0 right-0 z-[45] ${isBlocked ? "pointer-events-none" : ""} ${darkMode ? `${DARK.bgCard} ${DARK.borderCard}` : "bg-white border-[#E4E7EF]"} border-t`}
           >
             <div className="max-w-[680px] mx-auto px-3 pt-2 pb-6">
-              {Object.values(entries).some((tab) =>
-                tab.some((e) => e.exercise),
-              ) && (
-                <button
-                  onClick={saveSession}
-                  className={`w-full py-3 rounded-xl border-none text-white text-[14px] font-bold cursor-pointer transition-all duration-300 mb-2 ${saved ? "bg-[#a8d8a8]" : "bg-[#b0c4de]"}`}
-                >
-                  {saved ? "✅ Session Saved!" : "Workout Finished"}
-                </button>
-              )}
               <div
                 data-name="Bottom-Exercise-Selector"
-                className="mb-2 flex flex-col gap-2"
+                className={
+                  showExerciseSelectModal ? "hidden" : "mb-2 flex flex-col gap-2"
+                }
               >
-                {showBottomExerciseSelector && (
-                  <div
-                    data-name="Exercise-Selector-Row"
-                    className="flex items-center gap-2"
-                  >
-                    <button
-                      onClick={() => {
-                        setSelectingExerciseIdx(bottomExerciseIdx);
+                <button
+                  onClick={() => {
+                    if (canAddExercise) {
+                      // All exercises filled — add new slot and open modal for it
+                      const newIdx = activeEntries.length;
+                      addExercise();
+                      setTimeout(() => {
+                        setSelectingExerciseIdx(newIdx);
                         setExerciseSearchQuery("");
                         setShowExerciseSelectModal(true);
-                      }}
-                      className={`flex-1 py-[10px] px-4 rounded-[10px] border-[1.5px] flex items-center justify-between cursor-pointer outline-none transition-colors duration-200 ${
-                        bottomExercise.exercise
-                          ? `${c.bg} ${c.border} ${c.text}`
-                          : darkMode
-                            ? `${DARK.bgCardAlt} ${DARK.borderCard} ${DARK.textMuted}`
-                            : "bg-white border-[#cac3c3] text-[#8e8e8e]"
-                      }`}
-                    >
-                      <span className="block w-full text-center text-[16px] font-bold">
-                        {bottomExercise.exercise || "Select exercise"}
-                      </span>
-                      <span
-                        className={`text-[20px] leading-none ${bottomExercise.exercise ? c.text : darkMode ? DARK.textFaint : "text-[#ededed]"}`}
-                      ></span>
-                    </button>
-                  </div>
-                )}
-                {canAddExercise && (
-                  <button
-                    onClick={addExercise}
-                    className={`w-full py-3 rounded-xl border-none ${c.bg} ${c.text} text-[16px] font-bold cursor-pointer transition-all duration-200 flex items-center justify-center gap-2`}
-                  >
-                    + Add exercise
-                  </button>
-                )}
+                      }, 0);
+                    } else {
+                      // There's an empty slot — open modal for it
+                      setSelectingExerciseIdx(bottomExerciseIdx);
+                      setExerciseSearchQuery("");
+                      setShowExerciseSelectModal(true);
+                    }
+                  }}
+                  className={`w-full py-3 rounded-xl border-none ${c.bg} ${c.text} text-[16px] font-bold cursor-pointer transition-all duration-200 flex items-center justify-center gap-2`}
+                >
+                  + Add exercise
+                </button>
               </div>
+              
               <div className="flex gap-1.5">
                 {TABS.map((tab) => {
                   const tabC = COLORS[tab];

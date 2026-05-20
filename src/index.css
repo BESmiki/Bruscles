@@ -4,9 +4,9 @@
 
 
 /* this is to stop an accidental refresh when using the app */
-html, body {
+/* html, body {
   overscroll-behavior-y: none;
-}
+} */
 
 body {
   font-family: "'Segoe UI', sans-serif";
