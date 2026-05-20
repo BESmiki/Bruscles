@@ -85,6 +85,8 @@ const TABS = ["Push", "Pull", "Legs", "Cardio"];
 
 const emptySet = () => ({ weight: "", reps: "" });
 const emptyEntry = () => ({ exercise: "", rows: [emptySet()] });
+const isFilledSet = (row) =>
+  (parseFloat(row?.weight) || 0) > 0 || (parseFloat(row?.reps) || 0) > 0;
 
 function formatDate(d) {
   return new Date(d).toLocaleDateString("en-AU", {
@@ -100,8 +102,8 @@ function getLastStats(history, exercise) {
     for (const tab of TABS) {
       const exs = session.data[tab] || [];
       const match = exs.find((e) => e.exercise === exercise);
-      if (match && match.rows?.some((r) => r.weight || r.reps)) {
-        const rows = match.rows.filter((r) => r.weight || r.reps);
+      if (match && match.rows?.some(isFilledSet)) {
+        const rows = match.rows.filter(isFilledSet);
         const best = rows.reduce((b, r) => {
           const bScore =
             (parseFloat(b.weight) || 0) * (parseFloat(b.reps) || 0);
@@ -137,7 +139,8 @@ function StatsView({ history, darkMode }) {
     for (const tab of TABS) {
       const exs = session.data[tab] || [];
       for (const ex of exs) {
-        if (ex.exercise && ex.rows) {
+        const filledRows = ex.rows?.filter(isFilledSet) || [];
+        if (ex.exercise && filledRows.length > 0) {
           if (!exerciseStats[ex.exercise]) {
             exerciseStats[ex.exercise] = {
               count: 0,
@@ -147,8 +150,8 @@ function StatsView({ history, darkMode }) {
             };
           }
           exerciseStats[ex.exercise].count++;
-          exerciseStats[ex.exercise].totalSets += ex.rows.length;
-          for (const row of ex.rows) {
+          exerciseStats[ex.exercise].totalSets += filledRows.length;
+          for (const row of filledRows) {
             if (row.weight) {
               exerciseStats[ex.exercise].totalWeight +=
                 parseFloat(row.weight) * (parseFloat(row.reps) || 1);
@@ -642,15 +645,21 @@ export default function App() {
   };
 
   const saveSession = () => {
+    const data = Object.fromEntries(
+      Object.entries(entries).map(([k, v]) => [
+        k,
+        v
+          .filter((e) => e.exercise)
+          .map((e) => ({ ...e, rows: e.rows.filter(isFilledSet) }))
+          .filter((e) => e.rows.length > 0),
+      ]),
+    );
+    if (!Object.values(data).some((tab) => tab.length > 0)) return;
+
     const session = {
       id: Date.now(),
       date: new Date().toISOString(),
-      data: Object.fromEntries(
-        Object.entries(entries).map(([k, v]) => [
-          k,
-          v.filter((e) => e.exercise),
-        ]),
-      ),
+      data,
     };
     const updated = [session, ...history];
     setHistory(updated);
@@ -787,6 +796,9 @@ export default function App() {
   const bottomExercise = activeEntries[bottomExerciseIdx] || emptyEntry();
   const canAddExercise =
     activeEntries.length > 0 && activeEntries.every((entry) => entry.exercise);
+  const hasWorkoutData = Object.values(entries).some((tab) =>
+    tab.some((entry) => entry.exercise && entry.rows?.some(isFilledSet)),
+  );
 
   return (
     <div
@@ -917,16 +929,14 @@ export default function App() {
           >
             {" "}
             {/* save session button */}
-            {Object.values(entries).some((tab) =>
-              tab.some((e) => e.exercise),
-            ) && (
-              <button
-                onClick={saveSession}
-                className={`w-full py-3 rounded-xl border-none text-white text-[14px] font-bold cursor-pointer transition-all duration-300 mb-2 ${saved ? "bg-[#a8d8a8]" : "bg-[#b0c4de]"}`}
-              >
-                {saved ? "✅ Session Saved!" : "Workout Finished"}
-              </button>
-            )}
+            <button
+              onClick={hasWorkoutData ? saveSession : undefined}
+              className={`w-full py-3 rounded-xl border-none text-white text-[14px] font-bold cursor-pointer transition-all duration-300 mb-2 ${
+                hasWorkoutData ? "" : "invisible pointer-events-none"
+              } ${saved ? "bg-[#a8d8a8]" : "bg-[#b0c4de]"}`}
+            >
+              {saved ? "✅ Session Saved!" : "Workout Finished"}
+            </button>
             {/* Subsection: List of Exercises */}
             <div data-name="Exercise-List" className="flex flex-col gap-3.5">
               {entries[activeTab].map((entry, eIdx) => {
@@ -1776,6 +1786,9 @@ export default function App() {
               <div className="flex gap-1.5">
                 {TABS.map((tab) => {
                   const tabC = COLORS[tab];
+                  const hasSelectedExercise = entries[tab]?.some(
+                    (entry) => entry.exercise,
+                  );
                   return (
                     <button
                       key={tab}
@@ -1783,6 +1796,8 @@ export default function App() {
                       className={`flex-1 py-2.5 px-1 rounded-xl border-2 cursor-pointer font-bold text-[13px] transition-all duration-200 ${
                         activeTab === tab
                           ? `${tabC.borderAccent} ${tabC.bg} ${tabC.text}`
+                          : hasSelectedExercise
+                            ? `${tabC.border} ${tabC.bg} ${tabC.text}`
                           : darkMode
                             ? `border-transparent ${DARK.bgTabInactive} ${DARK.textMuted}`
                             : "border-transparent bg-[#ECEEF4] text-[#999]"
