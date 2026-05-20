@@ -825,12 +825,20 @@ export default function App() {
         </div>
 
         <div data-name="Header-Section" className="text-center mb-4 relative">
-          <button
-            onClick={() => setDarkMode(!darkMode)}
-            className="absolute top-0 right-0 text-2xl cursor-pointer bg-transparent border-none p-0 hover:opacity-70 transition-opacity"
-          >
-            {darkMode ? "🌚" : "🌞"}
-          </button>
+          <div className="absolute top-0 right-0">
+            <input
+              type="checkbox"
+              id="dark-mode-toggle"
+              checked={darkMode}
+              onChange={() => setDarkMode(!darkMode)}
+              className="theme-toggle-input"
+            />
+            <label
+              htmlFor="dark-mode-toggle"
+              className="theme-toggle"
+              aria-label="Toggle dark mode"
+            />
+          </div>
           <img
             src={
               totalSessionTime >= 2700

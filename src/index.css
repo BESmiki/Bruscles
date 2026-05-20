@@ -25,4 +25,52 @@ body {
   animation: fadeIn 0.3s ease-in-out;
 }
 
+.theme-toggle-input {
+  display: none;
+}
+
+.theme-toggle {
+  position: relative;
+  display: block;
+  width: 54px;
+  height: 30px;
+  border-radius: 999px;
+  background-color: #e0e0e0;
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.theme-toggle::before,
+.theme-toggle::after {
+  position: absolute;
+  display: block;
+  content: "";
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  top: 4px;
+  left: 5px;
+  transition: 0.5s ease;
+}
+
+.theme-toggle::before {
+  background-color: #f3bd6b;
+}
+
+.theme-toggle::after {
+  background-color: #e0e0e0;
+  left: -18px;
+  transform: scale(0.00001);
+}
+
+.theme-toggle-input:checked + .theme-toggle::before {
+  background-color: #bb7bc8;
+  transform: translateX(22px);
+}
+
+.theme-toggle-input:checked + .theme-toggle::after {
+  transform: translateX(35px) scale(1);
+}
+
 
