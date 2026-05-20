@@ -720,11 +720,18 @@ export default function App() {
   const version = new Date();
   const day = version.getDate();
   const month = version.getMonth() + 1;
+  const activeEntries = entries[activeTab] || [];
+  const emptyExerciseIdx = activeEntries.findIndex((entry) => !entry.exercise);
+  const showBottomExerciseSelector = emptyExerciseIdx !== -1;
+  const bottomExerciseIdx = showBottomExerciseSelector ? emptyExerciseIdx : 0;
+  const bottomExercise = activeEntries[bottomExerciseIdx] || emptyEntry();
+  const canAddExercise =
+    activeEntries.length > 0 && activeEntries.every((entry) => entry.exercise);
 
   return (
     <div
       data-name="App-Container"
-      className={`font-sans min-h-screen py-5 px-3 pb-32 transition-colors duration-300 ${darkMode ? DARK.bg : "bg-[#f9f7f4]"}`}
+      className={`font-sans min-h-screen py-5 px-3 pb-52 transition-colors duration-300 ${darkMode ? DARK.bg : "bg-[#f9f7f4]"}`}
     >
       <div data-name="Main-Content-Wrapper" className="max-w-[680px] mx-auto">
         <p data-name="app-version" className="text-[12px] text-gray-500 mb-2">
@@ -820,6 +827,7 @@ export default function App() {
                 const lastStats = entry.exercise
                   ? getLastStats(history, entry.exercise)
                   : null;
+                if (!entry.exercise) return null;
                 return (
                   <div
                     data-name="Exercise-Card"
@@ -828,7 +836,7 @@ export default function App() {
                   >
                     {/* Exercise Header */}
                     <div
-                      data-name="Exercise-Selector-Row"
+                      data-name="Exercise-Title-Row"
                       className="flex items-center gap-2 mb-2.5"
                     >
                       <span
@@ -836,13 +844,8 @@ export default function App() {
                       >
                         #{eIdx + 1}
                       </span>
-                      <button
-                        onClick={() => {
-                          setSelectingExerciseIdx(eIdx);
-                          setExerciseSearchQuery("");
-                          setShowExerciseSelectModal(true);
-                        }}
-                        className={`flex-1 py-[10px] px-4 rounded-[10px] border-[1.5px] flex items-center justify-between cursor-pointer outline-none transition-colors duration-200 ${
+                      <div
+                        className={`flex-1 py-[10px] px-4 rounded-[10px] border-[1.5px] ${
                           entry.exercise
                             ? `${c.bg} ${c.border} ${c.text}`
                             : darkMode
@@ -851,14 +854,14 @@ export default function App() {
                         }`}
                       >
                         <span className="text-[16px] font-bold">
-                          {entry.exercise || "Select exercise"}
+                          {entry.exercise}
                         </span>
                         <span
-                          className={`text-[20px] leading-none ${entry.exercise ? c.text : darkMode ? DARK.textFaint : "text-[#ededed]"}`}
+                          className="hidden"
                         >
                           ›
                         </span>
-                      </button>
+                      </div>
                       {entries[activeTab].length > 1 && (
                         <button
                           onClick={() => removeExercise(eIdx)}
@@ -1086,14 +1089,6 @@ export default function App() {
                 );
               })}
             </div>
-
-            {/* Add Exercise Button */}
-            <button
-              onClick={addExercise}
-              className={`mt-3 w-full py-3 rounded-xl border-none ${c.bg} ${c.text} text-[16px] font-bold cursor-pointer transition-all duration-200 flex items-center justify-center gap-2`}
-            >
-              + Add exercise
-            </button>
           </div>
         )}
 
@@ -1647,6 +1642,54 @@ export default function App() {
                   {saved ? "✅ Session Saved!" : "Workout Finished"}
                 </button>
               )}
+              <div
+                data-name="Bottom-Exercise-Selector"
+                className="mb-2 flex flex-col gap-2"
+              >
+                {showBottomExerciseSelector && (
+                <div
+                  data-name="Exercise-Selector-Row"
+                  className="flex items-center gap-2"
+                >
+                  <span
+                    className={`${c.bg} ${c.text} rounded-[20px] py-0.5 px-2.5 font-bold text-xs`}
+                  >
+                    #{bottomExerciseIdx + 1}
+                  </span>
+                  <button
+                    onClick={() => {
+                      setSelectingExerciseIdx(bottomExerciseIdx);
+                      setExerciseSearchQuery("");
+                      setShowExerciseSelectModal(true);
+                    }}
+                    className={`flex-1 py-[10px] px-4 rounded-[10px] border-[1.5px] flex items-center justify-between cursor-pointer outline-none transition-colors duration-200 ${
+                      bottomExercise.exercise
+                        ? `${c.bg} ${c.border} ${c.text}`
+                        : darkMode
+                          ? `${DARK.bgCardAlt} ${DARK.borderCard} ${DARK.textMuted}`
+                          : "bg-white border-[#cac3c3] text-[#8e8e8e]"
+                    }`}
+                  >
+                    <span className="text-[16px] font-bold">
+                      {bottomExercise.exercise || "Select exercise"}
+                    </span>
+                    <span
+                      className={`text-[20px] leading-none ${bottomExercise.exercise ? c.text : darkMode ? DARK.textFaint : "text-[#ededed]"}`}
+                    >
+                      â€º
+                    </span>
+                  </button>
+                </div>
+                )}
+                {canAddExercise && (
+                  <button
+                    onClick={addExercise}
+                    className={`w-full py-3 rounded-xl border-none ${c.bg} ${c.text} text-[16px] font-bold cursor-pointer transition-all duration-200 flex items-center justify-center gap-2`}
+                  >
+                    + Add exercise
+                  </button>
+                )}
+              </div>
               <div className="flex gap-1.5">
                 {TABS.map((tab) => {
                   const tabC = COLORS[tab];
