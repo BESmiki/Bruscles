@@ -436,8 +436,8 @@ export default function App() {
         if (document.visibilityState === "visible") {
           setShowFullscreenStopwatch(true);
         }
-        // reset to 1500
-      }, 99999);
+        // reset to 15000
+      }, 15000);
     };
 
     resetInactivityTimer();
@@ -1525,7 +1525,7 @@ export default function App() {
               <div className="fixed inset-x-0 top-0 bottom-[76px] bg-black bg-opacity-50 flex items-end justify-center z-40 sm:items-center pointer-events-none">
                 <div
                   className={`${darkMode ? DARK.bgCard : "bg-white"} rounded-t-3xl sm:rounded-2xl p-5 w-full sm:max-w-sm flex flex-col overflow-hidden pointer-events-auto`}
-                  style={{ maxHeight: "80vh" }}
+                  style={{ maxHeight: "calc(100dvh - 96px)" }}
                 >
                   <div className="flex items-center justify-between mb-4">
                     <h2
@@ -1550,7 +1550,10 @@ export default function App() {
                     placeholder="Search exercises..."
                     className={`w-full py-2 px-3 rounded-lg border-[1.5px] ${col.border} ${darkMode ? `${DARK.bgCardAlt} ${DARK.text}` : "bg-[#f9f7f4] text-[#333]"} mb-3 outline-none text-sm`}
                   />
-                  <div className="min-h-0 overflow-y-auto overscroll-contain flex-1 flex flex-col gap-2 mb-2 pr-1">
+                  <div
+                    className="min-h-0 max-h-[55dvh] overflow-y-auto touch-pan-y overscroll-contain flex-1 flex flex-col gap-2 mb-2 pr-1"
+                    style={{ WebkitOverflowScrolling: "touch" }}
+                  >
                     {filtered.length === 0 && (
                       <p
                         className={`text-center text-sm mt-4 ${darkMode ? DARK.textMuted : "text-[#bbb]"}`}
@@ -1580,8 +1583,8 @@ export default function App() {
                       </button>
                     ))}
                   </div>
-                  <div 
-                    className={`flex gap-2 pt-3 border-t border-[#e0dbd6] mt-auto sticky bottom-0 ${darkMode ? DARK.bgCard : "bg-white"}`}
+                  <div
+                    className={`flex gap-2 pt-3 border-t border-[#ffffff] mt-auto sticky bottom-0 ${darkMode ? DARK.bgCard : "bg-white"}`}
                   >
                     <button
                       onClick={() => {
@@ -1589,9 +1592,9 @@ export default function App() {
                         setNewExerciseTab(activeTab);
                         setShowAddExerciseModal(true);
                       }}
-                      className={`flex-1 py-2.5 rounded-xl font-semibold text-sm ${darkMode ? `${DARK.bgTabInactive} ${DARK.textSecondary}` : "bg-[#e8e4e0] text-[#666]"}`}
+                      className={`flex-1 py-2.5 rounded-xl font-semibold text-sm ${darkMode ? `${DARK.bgTabInactive} ${DARK.textSecondary}` : "bg-[#e1f6e5] text-[#666]"}`}
                     >
-                      ➕ Add New
+                      Add New
                     </button>
                     <button
                       onClick={() => {
@@ -1599,9 +1602,9 @@ export default function App() {
                         setDeleteExerciseTab(activeTab);
                         setShowDeleteExerciseModal(true);
                       }}
-                      className={`flex-1 py-2.5 rounded-xl font-semibold text-sm ${darkMode ? `${DARK.bgTabInactive} ${DARK.textSecondary}` : "bg-[#e8e4e0] text-[#666]"}`}
+                      className={`flex-1 py-2.5 rounded-xl font-semibold text-sm ${darkMode ? `${DARK.bgTabInactive} ${DARK.textSecondary}` : "bg-[#f3dbdb] text-[#666]"}`}
                     >
-                      ❌ Delete
+                      Delete
                     </button>
                   </div>
                 </div>
@@ -1741,7 +1744,9 @@ export default function App() {
               <div
                 data-name="Bottom-Exercise-Selector"
                 className={
-                  showExerciseSelectModal ? "hidden" : "mb-2 flex flex-col gap-2"
+                  showExerciseSelectModal
+                    ? "hidden"
+                    : "mb-2 flex flex-col gap-2"
                 }
               >
                 <button
@@ -1764,10 +1769,10 @@ export default function App() {
                   }}
                   className={`w-full py-3 rounded-xl border-none ${c.bg} ${c.text} text-[16px] font-bold cursor-pointer transition-all duration-200 flex items-center justify-center gap-2`}
                 >
-                  + Add exercise
+                  + Add Workout
                 </button>
               </div>
-              
+
               <div className="flex gap-1.5">
                 {TABS.map((tab) => {
                   const tabC = COLORS[tab];
