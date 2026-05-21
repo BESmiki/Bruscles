@@ -368,6 +368,7 @@ export default function App() {
   const [showDeleteExerciseModal, setShowDeleteExerciseModal] = useState(false);
   const [expandedSessions, setExpandedSessions] = useState({});
   const [showLogoModal, setShowLogoModal] = useState(false);
+  const [showRefreshWarningModal, setShowRefreshWarningModal] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
 
   const toggleSession = (id) =>
@@ -398,6 +399,11 @@ export default function App() {
   const [sessionStartTime, setSessionStartTime] = useState(Date.now());
   const fileInputRef = useRef(null);
   const stopwatchRef = useRef(null);
+  const allowRefreshRef = useRef(false);
+  const hasOpenExercise = Object.values(entries).some((tab) =>
+    tab.some((entry) => entry.exercise),
+  );
+  const shouldWarnBeforeRefresh = hasOpenExercise && !saved;
 
   const resetStopwatch = () => {
     setStartTime(Date.now());
@@ -411,6 +417,41 @@ export default function App() {
     );
     return () => clearInterval(t);
   }, [startTime]);
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      const isRefreshShortcut =
+        event.key === "F5" ||
+        ((event.ctrlKey || event.metaKey) &&
+          event.key.toLowerCase() === "r");
+
+      if (
+        !isRefreshShortcut ||
+        !shouldWarnBeforeRefresh ||
+        allowRefreshRef.current
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      setShowRefreshWarningModal(true);
+    };
+
+    const handleBeforeUnload = (event) => {
+      if (!shouldWarnBeforeRefresh || allowRefreshRef.current) return;
+
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [shouldWarnBeforeRefresh]);
 
   useEffect(() => {
     let inactivityTimer;
@@ -805,6 +846,47 @@ export default function App() {
       data-name="App-Container"
       className={`font-sans min-h-screen py-5 px-3 pb-52 transition-colors duration-300 ${darkMode ? DARK.bg : "bg-[#f9f7f4]"}`}
     >
+      {showRefreshWarningModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[120] px-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="refresh-warning-title"
+            className={`${darkMode ? `${DARK.bgCard} ${DARK.borderCard}` : "bg-white border-[#e0dbd6]"} rounded-2xl p-6 max-w-sm w-full border shadow-xl`}
+          >
+            <h2
+              id="refresh-warning-title"
+              className={`text-lg font-bold mb-2 ${darkMode ? DARK.text : "text-[#333]"}`}
+            >
+              Refresh page?
+            </h2>
+            <p
+              className={`text-sm leading-relaxed mb-5 ${darkMode ? DARK.textSecondary : "text-[#666]"}`}
+            >
+              Refreshing will lose your unsaved workout. Do you want to refresh
+              anyway?
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowRefreshWarningModal(false)}
+                className={`flex-1 py-3 rounded-xl font-semibold ${darkMode ? `${DARK.bgTabInactive} ${DARK.textSecondary}` : "bg-[#e8e4e0] text-[#666]"}`}
+              >
+                Go back
+              </button>
+              <button
+                onClick={() => {
+                  allowRefreshRef.current = true;
+                  window.location.reload();
+                }}
+                className="flex-1 py-3 rounded-xl font-semibold bg-[#FA502F] text-white"
+              >
+                Refresh
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showFullscreenStopwatch && (
         <div
           data-name="Fullscreen-Stopwatch"
@@ -880,8 +962,8 @@ export default function App() {
               totalSessionTime >= 2700
                 ? "assets/tired.png"
                 : totalSessionTime >= 1200
-                  ? "assets/strong.png"
-                  : "assets/tajikarao.png"
+                  ? "assets/strong_animate.png"
+                  : "assets/workout.gif"
             }
             className="block mx-auto w-20 cursor-pointer hover:opacity-80 transition-opacity"
             alt="Logo"
@@ -1798,9 +1880,9 @@ export default function App() {
                           ? `${tabC.borderAccent} ${tabC.bg} ${tabC.text}`
                           : hasSelectedExercise
                             ? `${tabC.border} ${tabC.bg} ${tabC.text}`
-                          : darkMode
-                            ? `border-transparent ${DARK.bgTabInactive} ${DARK.textMuted}`
-                            : "border-transparent bg-[#ECEEF4] text-[#999]"
+                            : darkMode
+                              ? `border-transparent ${DARK.bgTabInactive} ${DARK.textMuted}`
+                              : "border-transparent bg-[#ECEEF4] text-[#999]"
                       }`}
                     >
                       {tab}
