@@ -831,6 +831,16 @@ export default function App() {
   const day = version.getDate();
   const month = version.getMonth() + 1;
   const activeEntries = entries[activeTab] || [];
+  const selectedExerciseCount = Object.values(entries).reduce(
+    (count, tab) => count + tab.filter((entry) => entry.exercise).length,
+    0,
+  );
+  const petImage =
+    selectedExerciseCount > 5
+      ? "assets/tired.png"
+      : selectedExerciseCount >= 2
+        ? "assets/strong_animate.gif"
+        : "assets/workout.gif";
   const emptyExerciseIdx = activeEntries.findIndex((entry) => !entry.exercise);
   const showBottomExerciseSelector = emptyExerciseIdx !== -1;
   const bottomExerciseIdx = showBottomExerciseSelector ? emptyExerciseIdx : 0;
@@ -958,13 +968,7 @@ export default function App() {
             />
           </div>
           <img
-            src={
-              totalSessionTime >= 2700
-                ? "assets/tired.png"
-                : totalSessionTime >= 1200
-                  ? "assets/strong_animate.png"
-                  : "assets/workout.gif"
-            }
+            src={petImage}
             className="block mx-auto w-20 cursor-pointer hover:opacity-80 transition-opacity"
             alt="Logo"
             onClick={() => setShowLogoModal(true)}
@@ -1613,6 +1617,12 @@ export default function App() {
               ex.toLowerCase().includes(exerciseSearchQuery.toLowerCase()),
             );
             const col = COLORS[activeTab];
+            const isExerciseAlreadySelected = (exerciseName) =>
+              entries[activeTab]?.some(
+                (entry, idx) =>
+                  idx !== selectingExerciseIdx &&
+                  entry.exercise === exerciseName,
+              );
             return (
               <div className="fixed inset-x-0 top-0 bottom-[76px] bg-black bg-opacity-50 flex items-end justify-center z-40 sm:items-center pointer-events-none">
                 <div
@@ -1653,27 +1663,39 @@ export default function App() {
                         No exercises found.
                       </p>
                     )}
-                    {filtered.map((ex) => (
-                      <button
+                    {filtered.map((ex) => {
+                      const alreadySelected = isExerciseAlreadySelected(ex);
+                      const isCurrentSelection =
+                        entries[activeTab][selectingExerciseIdx]?.exercise ===
+                        ex;
+
+                      return (
+                        <button
                         key={ex}
+                        disabled={alreadySelected}
                         onClick={() => {
+                          if (alreadySelected) return;
                           updateEntry(selectingExerciseIdx, "exercise", ex);
                           setShowExerciseSelectModal(false);
                         }}
                         className={`w-full p-3 rounded-xl text-left font-semibold text-sm transition-colors ${
-                          entries[activeTab][selectingExerciseIdx]?.exercise ===
-                          ex
-                            ? `${col.bg} ${col.text} border-2 ${col.borderAccent}`
-                            : darkMode
-                              ? `${DARK.bgCardAlt} ${DARK.text} hover:${DARK.bgTabInactive}`
-                              : "bg-[#f5f5f5] text-[#444] hover:bg-[#ede9e5]"
+                          alreadySelected
+                            ? darkMode
+                              ? `${DARK.bgTabInactive} text-[#555] cursor-not-allowed opacity-60`
+                              : "bg-[#e5e5e5] text-[#aaa] cursor-not-allowed opacity-70"
+                            : isCurrentSelection
+                              ? `${col.bg} ${col.text} border-2 ${col.borderAccent}`
+                              : darkMode
+                                ? `${DARK.bgCardAlt} ${DARK.text} hover:${DARK.bgTabInactive}`
+                                : "bg-[#f5f5f5] text-[#444] hover:bg-[#ede9e5]"
                         }`}
                       >
                         {ex}
                         {entries[activeTab][selectingExerciseIdx]?.exercise ===
                           ex && <span className="float-right">✓</span>}
                       </button>
-                    ))}
+                      );
+                    })}
                   </div>
                   <div
                     className={`flex gap-2 pt-3 border-t border-[#ffffff] mt-auto sticky bottom-0 ${darkMode ? DARK.bgCard : "bg-white"}`}
