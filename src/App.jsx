@@ -97,6 +97,29 @@ function formatDate(d) {
   });
 }
 
+function formatDaysSince(d) {
+  const last = new Date(d);
+  const today = new Date();
+  const lastDay = new Date(
+    last.getFullYear(),
+    last.getMonth(),
+    last.getDate(),
+  );
+  const todayDay = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate(),
+  );
+  const days = Math.max(
+    0,
+    Math.round((todayDay - lastDay) / (1000 * 60 * 60 * 24)),
+  );
+
+  if (days === 0) return "today";
+  if (days === 1) return "1 day ago";
+  return `${days} days ago`;
+}
+
 function formatDistanceKm(value) {
   const distance = Number.parseFloat(value);
   if (!Number.isFinite(distance) || distance <= 0) return "—";
@@ -127,6 +150,12 @@ function formatCardioSet(row) {
   return `${formatDistanceKm(row.weight)} · ${formatCardioTime(row.reps)}`;
 }
 
+function formatStrengthSet(row) {
+  const weight = row.weight ? `${row.weight}kg` : "--";
+  const reps = row.reps ? `${row.reps} reps` : "--";
+  return `${weight} x ${reps}`;
+}
+
 function getLastStats(history, exercise) {
   for (const session of history) {
     for (const tab of TABS) {
@@ -154,6 +183,7 @@ function NumberWheel({
   unit,
   min,
   max,
+  step = 1,
   onChange,
   darkMode,
   color,
@@ -162,25 +192,33 @@ function NumberWheel({
   const scrollRef = useRef(null);
   const scrollTimerRef = useRef(null);
   const itemHeight = 36;
-  const parsedValue = Number.parseInt(value, 10);
+  const parsedValue = Number.parseFloat(value);
   const selectedValue = Number.isFinite(parsedValue)
     ? Math.min(max, Math.max(min, parsedValue))
     : min;
-  const values = Array.from({ length: max - min + 1 }, (_, i) => min + i);
+  const valueCount = Math.floor((max - min) / step) + 1;
+  const values = Array.from({ length: valueCount }, (_, i) =>
+    Number((min + i * step).toFixed(3)),
+  );
+  const selectedIndex = Math.min(
+    valueCount - 1,
+    Math.max(0, Math.round((selectedValue - min) / step)),
+  );
 
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    el.scrollTop = (selectedValue - min) * itemHeight;
-  }, [selectedValue, min]);
+    el.scrollTop = selectedIndex * itemHeight;
+  }, [selectedIndex]);
 
   const updateFromScroll = () => {
     const el = scrollRef.current;
     if (!el) return;
-    const nextValue = Math.min(
-      max,
-      Math.max(min, Math.round(el.scrollTop / itemHeight) + min),
+    const nextIndex = Math.min(
+      valueCount - 1,
+      Math.max(0, Math.round(el.scrollTop / itemHeight)),
     );
+    const nextValue = values[nextIndex];
     onChange(String(nextValue));
   };
 
@@ -212,7 +250,7 @@ function NumberWheel({
               type="button"
               onClick={() => onChange(String(option))}
               className={`relative z-10 h-9 w-full snap-center bg-transparent border-none text-center tabular-nums transition-colors ${
-                option === selectedValue
+                option === values[selectedIndex]
                   ? `${color.text} text-[18px] font-black`
                   : darkMode
                     ? "text-[#555] text-[14px] font-semibold"
@@ -1144,12 +1182,12 @@ export default function App() {
                   <div
                     data-name="Exercise-Card"
                     key={eIdx}
-                    className={`${darkMode ? DARK.bgCard : c.light} border-[1.5px] ${c.border} rounded-2xl p-4 transition-all duration-500 ease-in-out animate-fade-in`}
+                    className={`bg-transparent border ${darkMode ? DARK.borderCard : c.border} rounded-2xl p-4 transition-all duration-500 ease-in-out animate-fade-in`}
                   >
                     {/* Exercise Header */}
                     <div
                       data-name="Exercise-Title-Row"
-                      className="flex items-center gap-2 mb-2.5"
+                      className="flex items-center gap-2 mb-3"
                     >
                       <span
                         className={`${c.bg} ${c.text} rounded-[20px] py-0.5 px-2.5 font-bold text-xs`}
@@ -1157,15 +1195,9 @@ export default function App() {
                         #{eIdx + 1}
                       </span>
                       <div
-                        className={`flex-1 py-[10px] px-4 rounded-[10px] border-[1.5px] ${
-                          entry.exercise
-                            ? `${c.bg} ${c.border} ${c.text}`
-                            : darkMode
-                              ? `${DARK.bgCardAlt} ${DARK.borderCard} ${DARK.textMuted}`
-                              : "bg-white border-[#cac3c3] text-[#8e8e8e]"
-                        }`}
+                        className={`flex-1 min-w-0 ${darkMode ? DARK.text : "text-[#222]"}`}
                       >
-                        <span className="text-[16px] font-bold">
+                        <span className="block truncate text-[17px] font-bold">
                           {entry.exercise}
                         </span>
                         <span className="hidden">›</span>
@@ -1185,21 +1217,24 @@ export default function App() {
                     {lastStats && (
                       <div
                         data-name="Previous-Stats-Box"
-                        className={`${c.bg} border border-dashed ${c.border} rounded-lg py-2 px-3 mb-2.5`}
+                        className={`border-l-2 ${c.borderAccent} py-1.5 pl-3 mb-3`}
                       >
                         <div
-                          className={`text-[11px] font-bold ${c.text} mb-1 uppercase tracking-[0.5px]`}
+                          className={`text-[12px] font-bold ${darkMode ? DARK.textSecondary : "text-[#666]"} mb-1`}
                         >
+                          Last trained {formatDaysSince(lastStats.date)}
+                        </div>
+                        <div className="hidden">
                           📊 Last session · {formatDate(lastStats.date)}
                         </div>
                         <div
                           data-name="Previous-Sets-Cloud"
-                          className="flex flex-wrap gap-1.5 mb-2"
+                          className="flex flex-wrap gap-x-3 gap-y-1 mb-1.5"
                         >
                           {lastStats.rows.map((r, i) => (
                             <span
                               key={i}
-                              className={`${darkMode ? `${DARK.bgInput} ${DARK.textSecondary}` : "bg-white text-[#777]"} rounded-lg py-[3px] px-2.5 text-xs border-[1px] ${c.border}`}
+                              className={`text-xs ${darkMode ? DARK.textSecondary : "text-[#777]"}`}
                             >
                               Set {i + 1}:{" "}
                               {activeTab === "Cardio"
@@ -1215,10 +1250,15 @@ export default function App() {
                           <span
                             className={`text-[11px] font-bold ${c.text} uppercase tracking-[0.5px]`}
                           >
+                            Best
+                          </span>
+                          <span
+                            className="hidden"
+                          >
                             🏆 Best Set
                           </span>
                           <span
-                            className={`${c.fill} text-white rounded-lg py-[3px] px-3 text-xs font-bold`}
+                            className={`text-xs font-bold ${darkMode ? DARK.text : "text-[#333]"}`}
                           >
                             {activeTab === "Cardio"
                               ? formatCardioSet(lastStats.best)
@@ -1359,6 +1399,36 @@ export default function App() {
                                 );
                               })()
                             ) : (
+                              <div className="flex gap-2">
+                                <NumberWheel
+                                  label="Kg"
+                                  value={row.weight}
+                                  unit="kg"
+                                  min={0}
+                                  max={250}
+                                  step={1}
+                                  formatOption={(option) => `${option}kg`}
+                                  onChange={(nextValue) =>
+                                    updateRow(eIdx, rIdx, "weight", nextValue)
+                                  }
+                                  darkMode={darkMode}
+                                  color={c}
+                                />
+                                <NumberWheel
+                                  label="Reps"
+                                  value={row.reps}
+                                  unit="reps"
+                                  min={0}
+                                  max={60}
+                                  onChange={(nextValue) =>
+                                    updateRow(eIdx, rIdx, "reps", nextValue)
+                                  }
+                                  darkMode={darkMode}
+                                  color={c}
+                                />
+                              </div>
+                            )}
+                            {false && (
                               <>
                             {/* Weight row */}
                             <div className="flex items-center gap-1.5 mb-2">
