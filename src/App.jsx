@@ -97,6 +97,36 @@ function formatDate(d) {
   });
 }
 
+function formatDistanceKm(value) {
+  const distance = Number.parseFloat(value);
+  if (!Number.isFinite(distance) || distance <= 0) return "—";
+  return `${distance.toFixed(1).replace(/\.0$/, "")}km`;
+}
+
+function getCardioTimeParts(value) {
+  const totalMinutes = Number.parseFloat(value);
+  if (!Number.isFinite(totalMinutes) || totalMinutes <= 0) {
+    return { minutes: 0, seconds: 0 };
+  }
+
+  const totalSeconds = Math.round(totalMinutes * 60);
+  return {
+    minutes: Math.floor(totalSeconds / 60),
+    seconds: totalSeconds % 60,
+  };
+}
+
+function formatCardioTime(value) {
+  const { minutes, seconds } = getCardioTimeParts(value);
+  if (minutes === 0 && seconds === 0) return "—";
+  if (seconds === 0) return `${minutes} min`;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
+function formatCardioSet(row) {
+  return `${formatDistanceKm(row.weight)} · ${formatCardioTime(row.reps)}`;
+}
+
 function getLastStats(history, exercise) {
   for (const session of history) {
     for (const tab of TABS) {
@@ -116,6 +146,87 @@ function getLastStats(history, exercise) {
     }
   }
   return null;
+}
+
+function NumberWheel({
+  label,
+  value,
+  unit,
+  min,
+  max,
+  onChange,
+  darkMode,
+  color,
+  formatOption,
+}) {
+  const scrollRef = useRef(null);
+  const scrollTimerRef = useRef(null);
+  const itemHeight = 36;
+  const parsedValue = Number.parseInt(value, 10);
+  const selectedValue = Number.isFinite(parsedValue)
+    ? Math.min(max, Math.max(min, parsedValue))
+    : min;
+  const values = Array.from({ length: max - min + 1 }, (_, i) => min + i);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTop = (selectedValue - min) * itemHeight;
+  }, [selectedValue, min]);
+
+  const updateFromScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const nextValue = Math.min(
+      max,
+      Math.max(min, Math.round(el.scrollTop / itemHeight) + min),
+    );
+    onChange(String(nextValue));
+  };
+
+  return (
+    <div className="flex-1 min-w-0">
+      <div className={`text-[12px] font-bold text-center mb-2 ${color.text}`}>
+        {label}
+      </div>
+      <div className="relative">
+        <div
+          className={`pointer-events-none absolute left-0 right-0 top-1/2 h-9 -translate-y-1/2 rounded-lg border-2 ${color.borderAccent} ${color.bg}`}
+        />
+        <div
+          ref={scrollRef}
+          onScroll={() => {
+            clearTimeout(scrollTimerRef.current);
+            scrollTimerRef.current = setTimeout(updateFromScroll, 80);
+          }}
+          className={`number-wheel-scrollbar relative h-[108px] overflow-y-auto snap-y snap-mandatory rounded-xl border ${color.border} ${darkMode ? DARK.bgCard : "bg-white"}`}
+          style={{
+            scrollbarWidth: "none",
+            WebkitOverflowScrolling: "touch",
+          }}
+        >
+          <div className="h-9" />
+          {values.map((option) => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => onChange(String(option))}
+              className={`relative z-10 h-9 w-full snap-center bg-transparent border-none text-center tabular-nums transition-colors ${
+                option === selectedValue
+                  ? `${color.text} text-[18px] font-black`
+                  : darkMode
+                    ? "text-[#555] text-[14px] font-semibold"
+                    : "text-[#bbb] text-[14px] font-semibold"
+              }`}
+            >
+              {formatOption ? formatOption(option) : `${option} ${unit}`}
+            </button>
+          ))}
+          <div className="h-9" />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function StatsView({ history, darkMode }) {
@@ -1092,7 +1203,7 @@ export default function App() {
                             >
                               Set {i + 1}:{" "}
                               {activeTab === "Cardio"
-                                ? `${r.weight ? `${r.weight}km` : "—"} · ${r.reps ? `${r.reps} min` : "—"}`
+                                ? formatCardioSet(r)
                                 : `${r.weight ? `${r.weight}kg` : "—"} × ${r.reps ? `${r.reps} reps` : "—"}`}
                             </span>
                           ))}
@@ -1110,7 +1221,7 @@ export default function App() {
                             className={`${c.fill} text-white rounded-lg py-[3px] px-3 text-xs font-bold`}
                           >
                             {activeTab === "Cardio"
-                              ? `${lastStats.best.weight ? `${lastStats.best.weight}km` : "—"} · ${lastStats.best.reps ? `${lastStats.best.reps} min` : "—"}`
+                              ? formatCardioSet(lastStats.best)
                               : `${lastStats.best.weight ? `${lastStats.best.weight}kg` : "—"} × ${lastStats.best.reps ? `${lastStats.best.reps} reps` : "—"}`}
                           </span>
                         </div>
@@ -1143,6 +1254,112 @@ export default function App() {
                               </button>
                             </div>
 
+                            {activeTab === "Cardio" ? (
+                              (() => {
+                                const distance = Number.parseFloat(row.weight);
+                                const safeDistance = Number.isFinite(distance)
+                                  ? Math.max(0, distance)
+                                  : 0;
+                                let wholeKm = Math.floor(safeDistance);
+                                let tenthsKm = Math.round(
+                                  (safeDistance - wholeKm) * 10,
+                                );
+                                if (tenthsKm === 10) {
+                                  wholeKm += 1;
+                                  tenthsKm = 0;
+                                }
+                                const { minutes, seconds } =
+                                  getCardioTimeParts(row.reps);
+                                const saveDistance = (km, tenth) =>
+                                  updateRow(
+                                    eIdx,
+                                    rIdx,
+                                    "weight",
+                                    (km + tenth / 10)
+                                      .toFixed(1)
+                                      .replace(/\.0$/, ""),
+                                  );
+                                const saveTime = (nextMinutes, nextSeconds) =>
+                                  updateRow(
+                                    eIdx,
+                                    rIdx,
+                                    "reps",
+                                    ((nextMinutes * 60 + nextSeconds) / 60)
+                                      .toFixed(4)
+                                      .replace(/\.?0+$/, ""),
+                                  );
+
+                                return (
+                                  <div className="flex gap-2">
+                                    <NumberWheel
+                                      label="Km"
+                                      value={wholeKm}
+                                      unit="km"
+                                      min={0}
+                                      max={100}
+                                      onChange={(nextValue) =>
+                                        saveDistance(
+                                          Number.parseInt(nextValue, 10),
+                                          tenthsKm,
+                                        )
+                                      }
+                                      darkMode={darkMode}
+                                      color={c}
+                                    />
+                                    <NumberWheel
+                                      label=".km"
+                                      value={tenthsKm}
+                                      unit=""
+                                      min={0}
+                                      max={9}
+                                      formatOption={(option) => `.${option}`}
+                                      onChange={(nextValue) =>
+                                        saveDistance(
+                                          wholeKm,
+                                          Number.parseInt(nextValue, 10),
+                                        )
+                                      }
+                                      darkMode={darkMode}
+                                      color={c}
+                                    />
+                                    <NumberWheel
+                                      label="Min"
+                                      value={minutes}
+                                      unit="m"
+                                      min={0}
+                                      max={240}
+                                      onChange={(nextValue) =>
+                                        saveTime(
+                                          Number.parseInt(nextValue, 10),
+                                          seconds,
+                                        )
+                                      }
+                                      darkMode={darkMode}
+                                      color={c}
+                                    />
+                                    <NumberWheel
+                                      label="Sec"
+                                      value={seconds}
+                                      unit="s"
+                                      min={0}
+                                      max={59}
+                                      formatOption={(option) =>
+                                        `${String(option).padStart(2, "0")}s`
+                                      }
+                                      onChange={(nextValue) =>
+                                        saveTime(
+                                          minutes,
+                                          Number.parseInt(nextValue, 10),
+                                        )
+                                      }
+                                      darkMode={darkMode}
+                                      color={c}
+                                    />
+                                  </div>
+                                );
+                              })()
+                            ) : (
+                              <>
                             {/* Weight row */}
                             <div className="flex items-center gap-1.5 mb-2">
                               <span
@@ -1268,6 +1485,8 @@ export default function App() {
                                 </button>
                               </div>
                             </div>
+                              </>
+                            )}
                           </div>
                         ))}
 
@@ -1438,7 +1657,7 @@ export default function App() {
                                         >
                                           Set {ri + 1}:{" "}
                                           {tab === "Cardio"
-                                            ? `${r.weight ? `${r.weight}km` : "—"} · ${r.reps ? `${r.reps} min` : "—"}`
+                                            ? formatCardioSet(r)
                                             : `${r.weight ? `${r.weight}kg` : "—"} × ${r.reps ? `${r.reps} reps` : "—"}`}
                                         </span>
                                       ) : null,

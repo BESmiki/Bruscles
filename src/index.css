@@ -25,6 +25,15 @@ body {
   animation: fadeIn 0.3s ease-in-out;
 }
 
+.number-wheel-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.number-wheel-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 .theme-toggle-input {
   display: none;
 }
@@ -72,5 +81,4 @@ body {
 .theme-toggle-input:checked + .theme-toggle::after {
   transform: translateX(35px) scale(1);
 }
-
 
