@@ -100,11 +100,7 @@ function formatDate(d) {
 function formatDaysSince(d) {
   const last = new Date(d);
   const today = new Date();
-  const lastDay = new Date(
-    last.getFullYear(),
-    last.getMonth(),
-    last.getDate(),
-  );
+  const lastDay = new Date(last.getFullYear(), last.getMonth(), last.getDate());
   const todayDay = new Date(
     today.getFullYear(),
     today.getMonth(),
@@ -572,8 +568,7 @@ export default function App() {
     const handleKeyDown = (event) => {
       const isRefreshShortcut =
         event.key === "F5" ||
-        ((event.ctrlKey || event.metaKey) &&
-          event.key.toLowerCase() === "r");
+        ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "r");
 
       if (
         !isRefreshShortcut ||
@@ -1252,11 +1247,7 @@ export default function App() {
                           >
                             Best
                           </span>
-                          <span
-                            className="hidden"
-                          >
-                            🏆 Best Set
-                          </span>
+                          <span className="hidden">🏆 Best Set</span>
                           <span
                             className={`text-xs font-bold ${darkMode ? DARK.text : "text-[#333]"}`}
                           >
@@ -1308,8 +1299,9 @@ export default function App() {
                                   wholeKm += 1;
                                   tenthsKm = 0;
                                 }
-                                const { minutes, seconds } =
-                                  getCardioTimeParts(row.reps);
+                                const { minutes, seconds } = getCardioTimeParts(
+                                  row.reps,
+                                );
                                 const saveDistance = (km, tenth) =>
                                   updateRow(
                                     eIdx,
@@ -1430,131 +1422,131 @@ export default function App() {
                             )}
                             {false && (
                               <>
-                            {/* Weight row */}
-                            <div className="flex items-center gap-1.5 mb-2">
-                              <span
-                                className={`text-[13px] font-semibold ${c.text} w-[52px]`}
-                              >
-                                {activeTab === "Cardio" ? "Dist" : "Weight"}
-                              </span>
-                              <span
-                                className={`${darkMode ? DARK.bgCard : "bg-white"} border-2 ${c.border} ${c.text} rounded-lg py-[5px] px-2.5 text-[18px] font-black min-w-[50px] text-center`}
-                              >
-                                {row.weight || "—"}
-                                {activeTab === "Cardio" ? "km" : ""}
-                              </span>
-                              <div className="flex gap-1 flex-1">
-                                <button
-                                  onClick={() =>
-                                    updateRow(
-                                      eIdx,
-                                      rIdx,
-                                      "weight",
-                                      Math.max(
-                                        0,
-                                        (parseFloat(row.weight) || 0) - 1,
-                                      ).toString(),
-                                    )
-                                  }
-                                  className={`flex-1 ${c.bg} border ${c.border} ${c.text} rounded-lg py-[5px] text-[13px] font-bold cursor-pointer`}
-                                >
-                                  −1
-                                </button>
-                                <button
-                                  onClick={() =>
-                                    updateRow(
-                                      eIdx,
-                                      rIdx,
-                                      "weight",
-                                      (
-                                        (parseFloat(row.weight) || 0) + 1
-                                      ).toString(),
-                                    )
-                                  }
-                                  className={`flex-1 ${c.bg} border ${c.border} ${c.text} rounded-lg py-[5px] text-[13px] font-bold cursor-pointer`}
-                                >
-                                  +1
-                                </button>
-                                <button
-                                  onClick={() =>
-                                    updateRow(
-                                      eIdx,
-                                      rIdx,
-                                      "weight",
-                                      (
-                                        (parseFloat(row.weight) || 0) + 5
-                                      ).toString(),
-                                    )
-                                  }
-                                  className={`flex-1 ${c.bg} border ${c.border} ${c.text} rounded-lg py-[5px] text-[13px] font-bold cursor-pointer`}
-                                >
-                                  +5
-                                </button>
-                              </div>
-                            </div>
+                                {/* Weight row */}
+                                <div className="flex items-center gap-1.5 mb-2">
+                                  <span
+                                    className={`text-[13px] font-semibold ${c.text} w-[52px]`}
+                                  >
+                                    {activeTab === "Cardio" ? "Dist" : "Weight"}
+                                  </span>
+                                  <span
+                                    className={`${darkMode ? DARK.bgCard : "bg-white"} border-2 ${c.border} ${c.text} rounded-lg py-[5px] px-2.5 text-[18px] font-black min-w-[50px] text-center`}
+                                  >
+                                    {row.weight || "—"}
+                                    {activeTab === "Cardio" ? "km" : ""}
+                                  </span>
+                                  <div className="flex gap-1 flex-1">
+                                    <button
+                                      onClick={() =>
+                                        updateRow(
+                                          eIdx,
+                                          rIdx,
+                                          "weight",
+                                          Math.max(
+                                            0,
+                                            (parseFloat(row.weight) || 0) - 1,
+                                          ).toString(),
+                                        )
+                                      }
+                                      className={`flex-1 ${c.bg} border ${c.border} ${c.text} rounded-lg py-[5px] text-[13px] font-bold cursor-pointer`}
+                                    >
+                                      −1
+                                    </button>
+                                    <button
+                                      onClick={() =>
+                                        updateRow(
+                                          eIdx,
+                                          rIdx,
+                                          "weight",
+                                          (
+                                            (parseFloat(row.weight) || 0) + 1
+                                          ).toString(),
+                                        )
+                                      }
+                                      className={`flex-1 ${c.bg} border ${c.border} ${c.text} rounded-lg py-[5px] text-[13px] font-bold cursor-pointer`}
+                                    >
+                                      +1
+                                    </button>
+                                    <button
+                                      onClick={() =>
+                                        updateRow(
+                                          eIdx,
+                                          rIdx,
+                                          "weight",
+                                          (
+                                            (parseFloat(row.weight) || 0) + 5
+                                          ).toString(),
+                                        )
+                                      }
+                                      className={`flex-1 ${c.bg} border ${c.border} ${c.text} rounded-lg py-[5px] text-[13px] font-bold cursor-pointer`}
+                                    >
+                                      +5
+                                    </button>
+                                  </div>
+                                </div>
 
-                            {/* Reps row */}
-                            <div className="flex items-center gap-1.5">
-                              <span
-                                className={`text-[13px] font-semibold ${c.text} w-[52px]`}
-                              >
-                                {activeTab === "Cardio" ? "Time" : "Reps"}
-                              </span>
-                              <span
-                                className={`${darkMode ? DARK.bgCard : "bg-white"} border-2 ${c.border} ${c.text} rounded-lg py-[5px] px-2.5 text-[18px] font-black min-w-[50px] text-center`}
-                              >
-                                {row.reps || "—"}
-                                {activeTab === "Cardio" ? "m" : ""}
-                              </span>
-                              <div className="flex gap-1 flex-1">
-                                <button
-                                  onClick={() =>
-                                    updateRow(
-                                      eIdx,
-                                      rIdx,
-                                      "reps",
-                                      Math.max(
-                                        0,
-                                        (parseFloat(row.reps) || 0) - 1,
-                                      ).toString(),
-                                    )
-                                  }
-                                  className={`flex-1 ${c.bg} border ${c.border} ${c.text} rounded-lg py-[5px] text-[13px] font-bold cursor-pointer`}
-                                >
-                                  −1
-                                </button>
-                                <button
-                                  onClick={() =>
-                                    updateRow(
-                                      eIdx,
-                                      rIdx,
-                                      "reps",
-                                      (
-                                        (parseFloat(row.reps) || 0) + 1
-                                      ).toString(),
-                                    )
-                                  }
-                                  className={`flex-1 ${c.bg} border ${c.border} ${c.text} rounded-lg py-[5px] text-[13px] font-bold cursor-pointer`}
-                                >
-                                  +1
-                                </button>
-                                <button
-                                  onClick={() =>
-                                    updateRow(
-                                      eIdx,
-                                      rIdx,
-                                      "reps",
-                                      (
-                                        (parseFloat(row.reps) || 0) + 5
-                                      ).toString(),
-                                    )
-                                  }
-                                  className={`flex-1 ${c.bg} border ${c.border} ${c.text} rounded-lg py-[5px] text-[13px] font-bold cursor-pointer`}
-                                >
-                                  +5
-                                </button>
-                              </div>
-                            </div>
+                                {/* Reps row */}
+                                <div className="flex items-center gap-1.5">
+                                  <span
+                                    className={`text-[13px] font-semibold ${c.text} w-[52px]`}
+                                  >
+                                    {activeTab === "Cardio" ? "Time" : "Reps"}
+                                  </span>
+                                  <span
+                                    className={`${darkMode ? DARK.bgCard : "bg-white"} border-2 ${c.border} ${c.text} rounded-lg py-[5px] px-2.5 text-[18px] font-black min-w-[50px] text-center`}
+                                  >
+                                    {row.reps || "—"}
+                                    {activeTab === "Cardio" ? "m" : ""}
+                                  </span>
+                                  <div className="flex gap-1 flex-1">
+                                    <button
+                                      onClick={() =>
+                                        updateRow(
+                                          eIdx,
+                                          rIdx,
+                                          "reps",
+                                          Math.max(
+                                            0,
+                                            (parseFloat(row.reps) || 0) - 1,
+                                          ).toString(),
+                                        )
+                                      }
+                                      className={`flex-1 ${c.bg} border ${c.border} ${c.text} rounded-lg py-[5px] text-[13px] font-bold cursor-pointer`}
+                                    >
+                                      −1
+                                    </button>
+                                    <button
+                                      onClick={() =>
+                                        updateRow(
+                                          eIdx,
+                                          rIdx,
+                                          "reps",
+                                          (
+                                            (parseFloat(row.reps) || 0) + 1
+                                          ).toString(),
+                                        )
+                                      }
+                                      className={`flex-1 ${c.bg} border ${c.border} ${c.text} rounded-lg py-[5px] text-[13px] font-bold cursor-pointer`}
+                                    >
+                                      +1
+                                    </button>
+                                    <button
+                                      onClick={() =>
+                                        updateRow(
+                                          eIdx,
+                                          rIdx,
+                                          "reps",
+                                          (
+                                            (parseFloat(row.reps) || 0) + 5
+                                          ).toString(),
+                                        )
+                                      }
+                                      className={`flex-1 ${c.bg} border ${c.border} ${c.text} rounded-lg py-[5px] text-[13px] font-bold cursor-pointer`}
+                                    >
+                                      +5
+                                    </button>
+                                  </div>
+                                </div>
                               </>
                             )}
                           </div>
@@ -1884,7 +1876,8 @@ export default function App() {
                   <summary
                     className={`cursor-pointer select-none rounded-lg px-3 py-2 text-sm font-semibold ${darkMode ? `${DARK.bgTabInactive} ${DARK.textSecondary}` : "bg-[#e8e4e0] text-[#666]"}`}
                   >
-                    Deleted Exercises ({deletedExercises[deleteExerciseTab].length})
+                    Deleted Exercises (
+                    {deletedExercises[deleteExerciseTab].length})
                   </summary>
                   <div className="space-y-2 mt-2 max-h-[200px] overflow-y-auto">
                     {deletedExercises[deleteExerciseTab]?.map((ex) => (
@@ -1992,29 +1985,31 @@ export default function App() {
 
                       return (
                         <button
-                        key={ex}
-                        disabled={alreadySelected}
-                        onClick={() => {
-                          if (alreadySelected) return;
-                          updateEntry(selectingExerciseIdx, "exercise", ex);
-                          setShowExerciseSelectModal(false);
-                        }}
-                        className={`w-full p-3 rounded-xl text-left font-semibold text-sm transition-colors ${
-                          alreadySelected
-                            ? darkMode
-                              ? `${DARK.bgTabInactive} text-[#555] cursor-not-allowed opacity-60`
-                              : "bg-[#e5e5e5] text-[#aaa] cursor-not-allowed opacity-70"
-                            : isCurrentSelection
-                              ? `${col.bg} ${col.text} border-2 ${col.borderAccent}`
-                              : darkMode
-                                ? `${DARK.bgCardAlt} ${DARK.text} hover:${DARK.bgTabInactive}`
-                                : "bg-[#f5f5f5] text-[#444] hover:bg-[#ede9e5]"
-                        }`}
-                      >
-                        {ex}
-                        {entries[activeTab][selectingExerciseIdx]?.exercise ===
-                          ex && <span className="float-right">✓</span>}
-                      </button>
+                          key={ex}
+                          disabled={alreadySelected}
+                          onClick={() => {
+                            if (alreadySelected) return;
+                            updateEntry(selectingExerciseIdx, "exercise", ex);
+                            setShowExerciseSelectModal(false);
+                          }}
+                          className={`w-full p-3 rounded-xl text-left font-semibold text-sm transition-colors ${
+                            alreadySelected
+                              ? darkMode
+                                ? `${DARK.bgTabInactive} text-[#555] cursor-not-allowed opacity-60`
+                                : "bg-[#e5e5e5] text-[#aaa] cursor-not-allowed opacity-70"
+                              : isCurrentSelection
+                                ? `${col.bg} ${col.text} border-2 ${col.borderAccent}`
+                                : darkMode
+                                  ? `${DARK.bgCardAlt} ${DARK.text} hover:${DARK.bgTabInactive}`
+                                  : "bg-[#f5f5f5] text-[#444] hover:bg-[#ede9e5]"
+                          }`}
+                        >
+                          {ex}
+                          {entries[activeTab][selectingExerciseIdx]
+                            ?.exercise === ex && (
+                            <span className="float-right">✓</span>
+                          )}
+                        </button>
                       );
                     })}
                   </div>
@@ -2111,7 +2106,7 @@ export default function App() {
                     world into darkness.
                     <img
                       src="/Bruscles/assets/story2.png"
-                      className="w-72 m-3 mx-auto rounded-3xl"
+                      className="w-64 m-3 mx-auto rounded-3xl"
                       alt="story2"
                     />
                   </p>
@@ -2132,9 +2127,9 @@ export default function App() {
                     They threw a wild party with music, dancing, and a mirror to
                     bait her curiosity, hoping to lure her out of the cave.
                     <img
-                      src="/Bruscles/assets/story3.1.png"
+                      src="/Bruscles/assets/story4.png"
                       className="w-64 m-3 mx-auto rounded-3xl"
-                      alt="story3.1"
+                      alt="story4"
                     />
                   </p>
                   <p
@@ -2146,9 +2141,9 @@ export default function App() {
                     and freed Amaterasu, instantly restoring radiant light to
                     the world once again.
                     <img
-                      src="/Bruscles/assets/story4.png"
+                      src="/Bruscles/assets/story5.png"
                       className="w-64 m-3 mx-auto rounded-3xl"
-                      alt="story4"
+                      alt="story5"
                     />
                   </p>
                 </div>
