@@ -366,6 +366,7 @@ export default function App() {
   const [newExerciseName, setNewExerciseName] = useState("");
   const [newExerciseTab, setNewExerciseTab] = useState("Push");
   const [showDeleteExerciseModal, setShowDeleteExerciseModal] = useState(false);
+  const [pendingDeleteExercise, setPendingDeleteExercise] = useState(null);
   const [expandedSessions, setExpandedSessions] = useState({});
   const [showLogoModal, setShowLogoModal] = useState(false);
   const [showRefreshWarningModal, setShowRefreshWarningModal] = useState(false);
@@ -642,47 +643,39 @@ export default function App() {
   };
 
   const addCustomExercise = () => {
-    if (!newExerciseName.trim()) return;
+    const exerciseName = newExerciseName.trim();
+    if (!exerciseName) return;
     const updated = {
       ...customExercises,
       [newExerciseTab]: [
         ...(customExercises[newExerciseTab] || []),
-        newExerciseName.trim(),
+        exerciseName,
       ],
     };
     setCustomExercises(updated);
     try {
       localStorage.setItem("custom_exercises", JSON.stringify(updated));
     } catch {}
-    setNewExerciseName("");
     setShowAddExerciseModal(false);
+    setNewExerciseName("");
+    setExerciseSearchQuery("");
+    setShowExerciseSelectModal(true);
   };
 
-  const deleteExercise = (exerciseName) => {
+  const confirmDeleteExercise = () => {
+    if (!pendingDeleteExercise) return;
     const updated = {
       ...deletedExercises,
       [deleteExerciseTab]: [
         ...(deletedExercises[deleteExerciseTab] || []),
-        exerciseName,
+        pendingDeleteExercise,
       ],
     };
     setDeletedExercises(updated);
     try {
       localStorage.setItem("deleted_exercises", JSON.stringify(updated));
     } catch {}
-  };
-
-  const restoreExercise = (exerciseName) => {
-    const updated = {
-      ...deletedExercises,
-      [deleteExerciseTab]: deletedExercises[deleteExerciseTab].filter(
-        (ex) => ex !== exerciseName,
-      ),
-    };
-    setDeletedExercises(updated);
-    try {
-      localStorage.setItem("deleted_exercises", JSON.stringify(updated));
-    } catch {}
+    setPendingDeleteExercise(null);
   };
 
   const saveSession = () => {
@@ -831,6 +824,12 @@ export default function App() {
   const day = version.getDate();
   const month = version.getMonth() + 1;
   const activeEntries = entries[activeTab] || [];
+  const visibleDefaultExercises = (EXERCISES[deleteExerciseTab] || []).filter(
+    (ex) => !deletedExercises[deleteExerciseTab]?.includes(ex),
+  );
+  const visibleCustomExercises = (
+    customExercises[deleteExerciseTab] || []
+  ).filter((ex) => !deletedExercises[deleteExerciseTab]?.includes(ex));
   const selectedExerciseCount = Object.values(entries).reduce(
     (count, tab) => count + tab.filter((entry) => entry.exercise).length,
     0,
@@ -1516,11 +1515,42 @@ export default function App() {
               <h2
                 className={`text-lg font-bold mb-4 ${darkMode ? DARK.text : "text-[#333]"}`}
               >
-                Delete/Restore Exercise
+                Delete Exercise
               </h2>
 
-              {(EXERCISES[deleteExerciseTab]?.length > 0 ||
-                customExercises[deleteExerciseTab]?.length > 0) && (
+              {pendingDeleteExercise && (
+                <div
+                  className={`mb-4 rounded-xl border p-4 ${darkMode ? `${DARK.bgCardAlt} ${DARK.borderCard}` : "bg-[#fff5f5] border-[#f0cccc]"}`}
+                >
+                  <div
+                    className={`text-sm font-semibold mb-2 ${darkMode ? DARK.text : "text-[#333]"}`}
+                  >
+                    Delete this exercise?
+                  </div>
+                  <div
+                    className={`rounded-lg px-3 py-2 font-bold mb-3 ${darkMode ? `${DARK.bgTabInactive} ${DARK.textSecondary}` : "bg-white text-[#c63e3e]"}`}
+                  >
+                    {pendingDeleteExercise}
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setPendingDeleteExercise(null)}
+                      className={`flex-1 py-2 rounded-lg font-semibold ${darkMode ? `${DARK.bgTabInactive} ${DARK.textSecondary}` : "bg-[#e8e4e0] text-[#666]"}`}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={confirmDeleteExercise}
+                      className="flex-1 py-2 rounded-lg font-semibold bg-[#FA502F] text-white"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {(visibleDefaultExercises.length > 0 ||
+                visibleCustomExercises.length > 0) && (
                 <>
                   <div
                     className={`text-sm font-semibold mb-2 ${darkMode ? DARK.textSecondary : "text-[#888]"}`}
@@ -1528,7 +1558,7 @@ export default function App() {
                     Active Exercises
                   </div>
                   <div className="space-y-2 mb-4 max-h-[200px] overflow-y-auto">
-                    {EXERCISES[deleteExerciseTab]
+                    {visibleDefaultExercises
                       ?.filter(
                         (ex) =>
                           !deletedExercises[deleteExerciseTab]?.includes(ex),
@@ -1536,13 +1566,13 @@ export default function App() {
                       .map((ex) => (
                         <button
                           key={ex}
-                          onClick={() => deleteExercise(ex)}
+                          onClick={() => setPendingDeleteExercise(ex)}
                           className={`w-full p-3 rounded-lg text-left font-semibold transition-colors ${darkMode ? `${DARK.bgCardAlt} ${DARK.text}` : "bg-[#f5f5f5] text-[#333]"} hover:bg-[#FA502F] hover:text-white`}
                         >
                           ❌ {ex}
                         </button>
                       ))}
-                    {customExercises[deleteExerciseTab]
+                    {visibleCustomExercises
                       ?.filter(
                         (ex) =>
                           !deletedExercises[deleteExerciseTab]?.includes(ex),
@@ -1550,7 +1580,7 @@ export default function App() {
                       .map((ex) => (
                         <button
                           key={`custom-${ex}`}
-                          onClick={() => deleteExercise(ex)}
+                          onClick={() => setPendingDeleteExercise(ex)}
                           className={`w-full p-3 rounded-lg text-left font-semibold transition-colors ${darkMode ? `${DARK.bgCardAlt} ${DARK.text}` : "bg-[#f5f5f5] text-[#333]"} hover:bg-[#FA502F] hover:text-white`}
                         >
                           ❌ {ex}
@@ -1560,14 +1590,14 @@ export default function App() {
                 </>
               )}
 
-              {deletedExercises[deleteExerciseTab]?.length > 0 && (
-                <>
-                  <div
-                    className={`text-sm font-semibold mb-2 ${darkMode ? DARK.textSecondary : "text-[#888]"}`}
+              {false && deletedExercises[deleteExerciseTab]?.length > 0 && (
+                <details className="mb-4">
+                  <summary
+                    className={`cursor-pointer select-none rounded-lg px-3 py-2 text-sm font-semibold ${darkMode ? `${DARK.bgTabInactive} ${DARK.textSecondary}` : "bg-[#e8e4e0] text-[#666]"}`}
                   >
-                    Deleted Exercises (click to restore)
-                  </div>
-                  <div className="space-y-2 mb-4 max-h-[200px] overflow-y-auto">
+                    Deleted Exercises ({deletedExercises[deleteExerciseTab].length})
+                  </summary>
+                  <div className="space-y-2 mt-2 max-h-[200px] overflow-y-auto">
                     {deletedExercises[deleteExerciseTab]?.map((ex) => (
                       <button
                         key={`deleted-${ex}`}
@@ -1578,21 +1608,23 @@ export default function App() {
                       </button>
                     ))}
                   </div>
-                </>
+                </details>
               )}
 
-              {EXERCISES[deleteExerciseTab]?.length === 0 &&
-                customExercises[deleteExerciseTab]?.length === 0 &&
-                deletedExercises[deleteExerciseTab]?.length === 0 && (
+              {visibleDefaultExercises.length === 0 &&
+                visibleCustomExercises.length === 0 && (
                   <p
                     className={`mb-4 ${darkMode ? DARK.textSecondary : "text-[#666]"}`}
                   >
-                    No exercises to manage.
+                    No active exercises to delete.
                   </p>
                 )}
 
               <button
-                onClick={() => setShowDeleteExerciseModal(false)}
+                onClick={() => {
+                  setPendingDeleteExercise(null);
+                  setShowDeleteExerciseModal(false);
+                }}
                 className={`w-full py-2 rounded-lg font-semibold ${darkMode ? `${DARK.bgTabInactive} ${DARK.textSecondary}` : "bg-[#e8e4e0] text-[#666]"}`}
               >
                 Close
