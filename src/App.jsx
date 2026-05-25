@@ -83,7 +83,7 @@ const DARK = {
 
 const TABS = ["Push", "Pull", "Legs", "Cardio"];
 
-const emptySet = () => ({ weight: "", reps: "" });
+const emptySet = () => ({ weight: "", reps: "", complete: false });
 const emptyEntry = () => ({ exercise: "", rows: [emptySet()] });
 const isFilledSet = (row) =>
   (parseFloat(row?.weight) || 0) > 0 || (parseFloat(row?.reps) || 0) > 0;
@@ -184,6 +184,7 @@ function NumberWheel({
   darkMode,
   color,
   formatOption,
+  disabled = false,
 }) {
   const scrollRef = useRef(null);
   const scrollTimerRef = useRef(null);
@@ -208,6 +209,7 @@ function NumberWheel({
   }, [selectedIndex]);
 
   const updateFromScroll = () => {
+    if (disabled) return;
     const el = scrollRef.current;
     if (!el) return;
     const nextIndex = Math.min(
@@ -225,7 +227,7 @@ function NumberWheel({
       </div>
       <div className="relative">
         <div
-          className={`pointer-events-none absolute left-0 right-0 top-1/2 h-9 -translate-y-1/2 rounded-lg border-2 ${color.borderAccent} ${color.bg}`}
+          className={`pointer-events-none absolute left-2 right-2 top-1/2 h-9 -translate-y-1/2 rounded-xl ${disabled ? "bg-[#f2eeee]" : color.bg}`}
         />
         <div
           ref={scrollRef}
@@ -233,7 +235,7 @@ function NumberWheel({
             clearTimeout(scrollTimerRef.current);
             scrollTimerRef.current = setTimeout(updateFromScroll, 80);
           }}
-          className={`number-wheel-scrollbar relative h-[108px] overflow-y-auto snap-y snap-mandatory rounded-xl border ${color.border} ${darkMode ? DARK.bgCard : "bg-white"}`}
+          className={`number-wheel-scrollbar relative h-[108px] overflow-y-auto snap-y snap-mandatory rounded-2xl border ${disabled ? "border-[#ebe2e2] opacity-70" : "border-[#eee6e6]"} ${darkMode ? DARK.bgCard : "bg-[#fffdfc]"} ${disabled ? "pointer-events-none" : ""}`}
           style={{
             scrollbarWidth: "none",
             WebkitOverflowScrolling: "touch",
@@ -244,10 +246,11 @@ function NumberWheel({
             <button
               key={option}
               type="button"
+              disabled={disabled}
               onClick={() => onChange(String(option))}
               className={`relative z-10 h-9 w-full snap-center bg-transparent border-none text-center tabular-nums transition-colors ${
                 option === values[selectedIndex]
-                  ? `${color.text} text-[18px] font-black`
+                  ? `${disabled ? "text-[#9f9fa6]" : color.text} text-[18px] font-black`
                   : darkMode
                     ? "text-[#555] text-[14px] font-semibold"
                     : "text-[#bbb] text-[14px] font-semibold"
@@ -310,9 +313,9 @@ function StatsView({ history, darkMode }) {
   const mostFrequent = Object.entries(exerciseStats).sort(
     (a, b) => b[1].count - a[1].count,
   )[0];
-  const mostWeight = Object.entries(exerciseStats).sort(
-    (a, b) => b[1].totalWeight - a[1].totalWeight,
-  )[0];
+  const mostWeight = Object.entries(exerciseStats)
+    .filter(([_, stats]) => stats.category !== "Cardio")
+    .sort((a, b) => b[1].totalWeight - a[1].totalWeight)[0];
   const mostSets = Object.entries(exerciseStats).sort(
     (a, b) => b[1].totalSets - a[1].totalSets,
   )[0];
@@ -516,6 +519,8 @@ export default function App() {
   const [showLogoModal, setShowLogoModal] = useState(false);
   const [showRefreshWarningModal, setShowRefreshWarningModal] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
+  const [deletingSets, setDeletingSets] = useState({});
+  const [finishingStopwatchSet, setFinishingStopwatchSet] = useState(null);
 
   const toggleSession = (id) =>
     setExpandedSessions((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -609,15 +614,15 @@ export default function App() {
     ];
 
     const resetInactivityTimer = (event) => {
-      const pressedFullscreenTimer = event?.target?.closest?.(
-        "[data-fullscreen-stopwatch-timer]",
+      const pressedFullscreenControl = event?.target?.closest?.(
+        "[data-fullscreen-stopwatch-timer], [data-fullscreen-stopwatch-controls]",
       );
-      if (!pressedFullscreenTimer && showFullscreenStopwatch) {
+      if (!pressedFullscreenControl && showFullscreenStopwatch) {
         setShowFullscreenStopwatch(false);
         setIsBlocked(true);
         // screen inactivity after stopwatch
         setTimeout(() => setIsBlocked(false), 600);
-      } else if (!pressedFullscreenTimer) {
+      } else if (!pressedFullscreenControl) {
         // normal activity, just reset timer
       }
       clearTimeout(inactivityTimer);
@@ -718,6 +723,15 @@ export default function App() {
 
   const c = COLORS[activeTab];
 
+  const scrollExerciseToTop = (idx) => {
+    window.setTimeout(() => {
+      const card = document.querySelector(`[data-exercise-index="${idx}"]`);
+      if (!card) return;
+      const top = card.getBoundingClientRect().top + window.scrollY - 88;
+      window.scrollTo({ top, behavior: "smooth" });
+    }, 80);
+  };
+
   const updateEntry = (idx, field, val) => {
     setEntries((prev) => {
       const tab = [...prev[activeTab]];
@@ -737,6 +751,7 @@ export default function App() {
     setEntries((prev) => {
       const tab = [...prev[activeTab]];
       const rows = [...tab[eIdx].rows];
+      if (rows[rIdx]?.complete) return prev;
       rows[rIdx] = { ...rows[rIdx], [field]: val };
       tab[eIdx] = { ...tab[eIdx], rows };
       return { ...prev, [activeTab]: tab };
@@ -751,8 +766,19 @@ export default function App() {
       const newSet = {
         weight: prev2.weight,
         reps: prev2.reps ? String(parseInt(prev2.reps) + 1) : "",
+        complete: false,
       };
       tab[eIdx] = { ...tab[eIdx], rows: [...rows, newSet] };
+      return { ...prev, [activeTab]: tab };
+    });
+  };
+
+  const toggleSetComplete = (eIdx, rIdx) => {
+    setEntries((prev) => {
+      const tab = [...prev[activeTab]];
+      const rows = [...tab[eIdx].rows];
+      rows[rIdx] = { ...rows[rIdx], complete: !rows[rIdx].complete };
+      tab[eIdx] = { ...tab[eIdx], rows };
       return { ...prev, [activeTab]: tab };
     });
   };
@@ -760,6 +786,7 @@ export default function App() {
   const removeSet = (eIdx, rIdx) => {
     setEntries((prev) => {
       const tab = [...prev[activeTab]];
+      if (tab[eIdx].rows[rIdx]?.complete) return prev;
       const rows = tab[eIdx].rows.filter((_, i) => i !== rIdx);
       if (rows.length === 0) {
         const updatedTab = tab.filter((_, i) => i !== eIdx);
@@ -781,9 +808,25 @@ export default function App() {
 
   const removeExercise = (idx) => {
     setEntries((prev) => {
+      if (prev[activeTab][idx]?.rows?.some((row) => row.complete)) return prev;
       const tab = prev[activeTab].filter((_, i) => i !== idx);
       return { ...prev, [activeTab]: tab.length ? tab : [emptyEntry()] };
     });
+  };
+
+  const requestRemoveSet = (eIdx, rIdx) => {
+    const key = `${activeTab}-${eIdx}-${rIdx}`;
+    if (deletingSets[key]) return;
+
+    setDeletingSets((prev) => ({ ...prev, [key]: true }));
+    window.setTimeout(() => {
+      removeSet(eIdx, rIdx);
+      setDeletingSets((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+    }, 340);
   };
 
   const addCustomExercise = () => {
@@ -993,11 +1036,54 @@ export default function App() {
   const hasWorkoutData = Object.values(entries).some((tab) =>
     tab.some((entry) => entry.exercise && entry.rows?.some(isFilledSet)),
   );
+  const currentUnlockedSet = (() => {
+    for (let eIdx = 0; eIdx < activeEntries.length; eIdx++) {
+      const entry = activeEntries[eIdx];
+      if (!entry.exercise) continue;
+      const rIdx = entry.rows?.findIndex((row) => !row.complete) ?? -1;
+      if (rIdx !== -1) {
+        const row = entry.rows[rIdx];
+        return {
+          eIdx,
+          rIdx,
+          key: `${activeTab}-${eIdx}-${rIdx}`,
+          exercise: entry.exercise,
+          setLabel: `Set ${rIdx + 1}`,
+          primary:
+            activeTab === "Cardio"
+              ? formatDistanceKm(row.weight)
+              : row.weight
+                ? `${row.weight} kg`
+                : "-- kg",
+          secondary:
+            activeTab === "Cardio"
+              ? formatCardioTime(row.reps)
+              : row.reps
+                ? `${row.reps} reps`
+                : "-- reps",
+        };
+      }
+    }
+    return null;
+  })();
+  const finishStopwatchSet = () => {
+    if (!currentUnlockedSet || finishingStopwatchSet) return;
+
+    const setToFinish = currentUnlockedSet;
+    setFinishingStopwatchSet(setToFinish.key);
+    resetStopwatch();
+    window.setTimeout(() => {
+      toggleSetComplete(setToFinish.eIdx, setToFinish.rIdx);
+      setFinishingStopwatchSet(null);
+    }, 520);
+  };
+  const isFinishingCurrentStopwatchSet =
+    currentUnlockedSet?.key === finishingStopwatchSet;
 
   return (
     <div
       data-name="App-Container"
-      className={`font-sans min-h-screen py-5 px-3 pb-52 transition-colors duration-300 ${darkMode ? DARK.bg : "bg-[#f9f7f4]"}`}
+      className={`font-sans min-h-screen py-5 px-3 pb-[75dvh] transition-colors duration-300 ${darkMode ? DARK.bg : "bg-[#f9f7f4]"}`}
     >
       {showRefreshWarningModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[120] px-4">
@@ -1044,7 +1130,7 @@ export default function App() {
         <div
           data-name="Fullscreen-Stopwatch"
           onClick={() => setShowFullscreenStopwatch(false)}
-          className={`fixed inset-0 z-[100] flex items-center justify-center animate-fade-in ${darkMode ? DARK.bg : "bg-[#f9f7f4]"}`}
+          className={`fixed inset-0 z-[100] flex items-center justify-center animate-fade-in px-4 pb-8 ${darkMode ? DARK.bg : "bg-[#f9f7f4]"}`}
         >
           <div
             data-fullscreen-stopwatch-timer
@@ -1061,6 +1147,45 @@ export default function App() {
             {String(Math.floor(elapsed / 60)).padStart(2, "0")}:
             {String(elapsed % 60).padStart(2, "0")}
           </div>
+          {currentUnlockedSet && (
+            <div
+              key={currentUnlockedSet.key}
+              data-name="Fullscreen-Current-Set"
+              data-fullscreen-stopwatch-controls
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                e.nativeEvent.stopImmediatePropagation();
+              }}
+              onClick={(e) => e.stopPropagation()}
+              className={`absolute inset-x-4 bottom-6 mx-auto flex max-w-[680px] items-center gap-3 rounded-2xl border p-3 shadow-[0_12px_30px_rgba(0,0,0,0.08)] ${darkMode ? "border-[#242424] bg-[#111]" : "border-[#eadcdc] bg-[#fffdfc]"}`}
+            >
+              <div className="min-w-0 flex-1">
+                <div
+                  className={`truncate text-[14px] font-black ${darkMode ? DARK.text : "text-[#222]"}`}
+                >
+                  {currentUnlockedSet.exercise}
+                </div>
+                <div className="mt-1 flex items-center gap-2 text-[12px] font-black">
+                  <span className={darkMode ? "text-[#777]" : "text-[#9a8b8b]"}>
+                    {currentUnlockedSet.setLabel}
+                  </span>
+                  <span className={c.text}>{currentUnlockedSet.primary}</span>
+                  <span className={darkMode ? "text-[#777]" : "text-[#b8adad]"}>
+                    /
+                  </span>
+                  <span className={c.text}>{currentUnlockedSet.secondary}</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={finishStopwatchSet}
+                disabled={isFinishingCurrentStopwatchSet}
+                className={`${darkMode ? "border-[#243d2a] bg-[#142018] text-[#5ccf73]" : "border-[#cfead5] bg-[#e8f7eb] text-[#39a852]"} shrink-0 rounded-xl border px-4 py-3 text-[12px] font-black transition-all duration-200 disabled:scale-95`}
+              >
+                {isFinishingCurrentStopwatchSet ? "✓" : "Finish set"}
+              </button>
+            </div>
+          )}
         </div>
       )}
       <div data-name="Main-Content-Wrapper" className="max-w-[680px] mx-auto">
@@ -1176,32 +1301,34 @@ export default function App() {
                 return (
                   <div
                     data-name="Exercise-Card"
+                    data-exercise-index={eIdx}
                     key={eIdx}
-                    className={`bg-transparent border ${darkMode ? DARK.borderCard : c.border} rounded-2xl p-4 transition-all duration-500 ease-in-out animate-fade-in`}
+                    className={`${darkMode ? `${DARK.bgCard} ${DARK.borderCard}` : "bg-[#fffdfc] border-[#eadcdc]"} border rounded-2xl p-4 shadow-[0_10px_24px_rgba(201,140,140,0.08)] transition-all duration-500 ease-in-out animate-fade-in`}
                   >
                     {/* Exercise Header */}
                     <div
                       data-name="Exercise-Title-Row"
-                      className="flex items-center gap-2 mb-3"
+                      className="flex items-center gap-3 mb-4"
                     >
                       <span
-                        className={`${c.bg} ${c.text} rounded-[20px] py-0.5 px-2.5 font-bold text-xs`}
+                        className={`${c.bg} ${c.text} rounded-full py-1 px-2.5 font-black text-[11px]`}
                       >
                         #{eIdx + 1}
                       </span>
                       <div
                         className={`flex-1 min-w-0 ${darkMode ? DARK.text : "text-[#222]"}`}
                       >
-                        <span className="block truncate text-[17px] font-bold">
+                        <span className="block truncate text-[18px] font-black tracking-normal">
                           {entry.exercise}
                         </span>
                         <span className="hidden">›</span>
                       </div>
                       {entries[activeTab].filter((e) => e.exercise).length >
-                        1 && (
+                        1 &&
+                        !entry.rows?.some((row) => row.complete) && (
                         <button
                           onClick={() => removeExercise(eIdx)}
-                          className={`bg-transparent border-none cursor-pointer text-lg ${darkMode ? DARK.textMuted : "text-[#c63e3e]"}`}
+                          className={`h-8 w-8 rounded-full border-none cursor-pointer text-[15px] ${darkMode ? `${DARK.bgTabInactive} ${DARK.textMuted}` : "bg-[#f6eeee] text-[#b77b7b]"}`}
                         >
                           ✕
                         </button>
@@ -1212,7 +1339,7 @@ export default function App() {
                     {lastStats && (
                       <div
                         data-name="Previous-Stats-Box"
-                        className={`border-l-2 ${c.borderAccent} py-1.5 pl-3 mb-3`}
+                        className={`rounded-xl ${darkMode ? DARK.bgCardAlt : "bg-[#faf5f5]"} py-2 px-3 mb-3`}
                       >
                         <div
                           className={`text-[12px] font-bold ${darkMode ? DARK.textSecondary : "text-[#666]"} mb-1`}
@@ -1265,26 +1392,27 @@ export default function App() {
                         data-name="Sets-Input-Container"
                         className="flex flex-col gap-2"
                       >
-                        {entry.rows.map((row, rIdx) => (
+                        {entry.rows.map((row, rIdx) => {
+                          const setComplete = Boolean(row.complete);
+                          const deletingSet = Boolean(
+                            deletingSets[`${activeTab}-${eIdx}-${rIdx}`],
+                          );
+                          return (
                           <div
                             data-name="Single-Set-Row"
                             key={rIdx}
-                            className={`${darkMode ? DARK.bgInput : "bg-white"} border ${c.border} rounded-xl p-3 animate-fade-in`}
+                            className={`${darkMode ? DARK.bgInput : setComplete ? "bg-[#f9f4f4]" : "bg-[#fffdfc]"} border ${setComplete ? "border-[#e7dada]" : "border-[#efe6e6]"} rounded-2xl px-3 py-3 max-h-[260px] animate-fade-in transition-all duration-300 ${deletingSet ? "animate-set-delete pointer-events-none" : ""}`}
                           >
-                            <div className="flex items-center justify-between mb-2">
+                            <div className="mb-3 flex items-center justify-between">
                               <span
-                                className={`text-[11px] font-bold uppercase tracking-[0.5px] ${c.text}`}
+                                className={`text-[12px] font-black uppercase tracking-[0.6px] ${setComplete ? "text-[#39a852]" : c.text}`}
                               >
                                 Set {rIdx + 1}
                               </span>
-                              <button
-                                onClick={() => removeSet(eIdx, rIdx)}
-                                className="bg-[#e87878] border-none cursor-pointer text-white text-[11px] font-bold rounded-md w-6 h-6 flex items-center justify-center"
-                              >
-                                ✕
-                              </button>
                             </div>
 
+                            <div className="flex items-stretch gap-2.5">
+                              <div className="min-w-0 flex-1">
                             {activeTab === "Cardio" ? (
                               (() => {
                                 const distance = Number.parseFloat(row.weight);
@@ -1337,6 +1465,7 @@ export default function App() {
                                       }
                                       darkMode={darkMode}
                                       color={c}
+                                      disabled={setComplete}
                                     />
                                     <NumberWheel
                                       label=".km"
@@ -1353,6 +1482,7 @@ export default function App() {
                                       }
                                       darkMode={darkMode}
                                       color={c}
+                                      disabled={setComplete}
                                     />
                                     <NumberWheel
                                       label="Min"
@@ -1368,6 +1498,7 @@ export default function App() {
                                       }
                                       darkMode={darkMode}
                                       color={c}
+                                      disabled={setComplete}
                                     />
                                     <NumberWheel
                                       label="Sec"
@@ -1386,6 +1517,7 @@ export default function App() {
                                       }
                                       darkMode={darkMode}
                                       color={c}
+                                      disabled={setComplete}
                                     />
                                   </div>
                                 );
@@ -1405,21 +1537,61 @@ export default function App() {
                                   }
                                   darkMode={darkMode}
                                   color={c}
+                                  disabled={setComplete}
                                 />
                                 <NumberWheel
                                   label="Reps"
                                   value={row.reps}
                                   unit="reps"
                                   min={0}
-                                  max={60}
+                                  max={20}
                                   onChange={(nextValue) =>
                                     updateRow(eIdx, rIdx, "reps", nextValue)
                                   }
                                   darkMode={darkMode}
                                   color={c}
+                                  disabled={setComplete}
                                 />
                               </div>
                             )}
+                              </div>
+                              <div className="flex w-[82px] shrink-0 flex-col gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => requestRemoveSet(eIdx, rIdx)}
+                                  disabled={setComplete || deletingSet}
+                                  className={`${
+                                    setComplete
+                                      ? darkMode
+                                        ? "border-[#252525] bg-[#171717] text-[#555] cursor-not-allowed"
+                                        : "border-[#e2dddd] bg-[#f0eeee] text-[#b8b2b2] cursor-not-allowed"
+                                      : darkMode
+                                        ? "border-[#2a2a2a] bg-[#171717] text-[#8f6f6f] cursor-pointer"
+                                        : "border-[#f0dddd] bg-[#fff7f7] text-[#b77b7b] cursor-pointer"
+                                  } h-9 rounded-xl border text-[13px] font-black leading-none`}
+                                  aria-label={`Delete set ${rIdx + 1}`}
+                                >
+                                  x
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    toggleSetComplete(eIdx, rIdx)
+                                  }
+                                  className={`${
+                                    setComplete
+                                      ? darkMode
+                                        ? "bg-[#142018] text-[#5ccf73] border-[#243d2a]"
+                                        : "bg-[#e8f7eb] text-[#39a852] border-[#cfead5]"
+                                      : darkMode
+                                        ? "bg-[#171717] text-[#6fbd7b] border-[#2a2a2a]"
+                                        : "bg-[#f7fbf8] text-[#39a852] border-[#d8ecdd]"
+                                  } flex-1 rounded-xl border text-[11px] font-black leading-tight cursor-pointer`}
+                                >
+                                  {setComplete ? "Locked" : "Finish set"}
+                                </button>
+                              </div>
+                            </div>
                             {false && (
                               <>
                                 {/* Weight row */}
@@ -1550,17 +1722,18 @@ export default function App() {
                               </>
                             )}
                           </div>
-                        ))}
+                          );
+                        })}
 
                         <button
                           data-name="Add-Set-Button"
                           onClick={() => addSet(eIdx)}
-                          className={`w-full py-3 rounded-xl border-none ${c.fill} text-white text-[13px] font-bold cursor-pointer flex items-center justify-center gap-1.5`}
+                          className={`w-full py-3 rounded-xl border border-[#eadcdc] ${darkMode ? `${DARK.bgCardAlt} ${DARK.textSecondary}` : "bg-[#faf3f3] text-[#a97070]"} text-[13px] font-black cursor-pointer flex items-center justify-center gap-1.5`}
                         >
-                          <span className="text-[16px] font-light leading-none">
+                          <span className="text-[16px] font-normal leading-none">
                             +
                           </span>{" "}
-                          Another set
+                          Add set
                         </button>
                       </div>
                     )}
@@ -1991,6 +2164,7 @@ export default function App() {
                             if (alreadySelected) return;
                             updateEntry(selectingExerciseIdx, "exercise", ex);
                             setShowExerciseSelectModal(false);
+                            scrollExerciseToTop(selectingExerciseIdx);
                           }}
                           className={`w-full p-3 rounded-xl text-left font-semibold text-sm transition-colors ${
                             alreadySelected
