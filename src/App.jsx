@@ -160,11 +160,10 @@ function getLastStats(history, exercise) {
       if (match && match.rows?.some(isFilledSet)) {
         const rows = match.rows.filter(isFilledSet);
         const best = rows.reduce((b, r) => {
-          const bScore =
-            (parseFloat(b.weight) || 0) * (parseFloat(b.reps) || 0);
-          const rScore =
-            (parseFloat(r.weight) || 0) * (parseFloat(r.reps) || 0);
-          return rScore > bScore ? r : b;
+          const bWeight = parseFloat(b.weight) || 0;
+          const rWeight = parseFloat(r.weight) || 0;
+          if (rWeight !== bWeight) return rWeight > bWeight ? r : b;
+          return (parseFloat(r.reps) || 0) > (parseFloat(b.reps) || 0) ? r : b;
         }, rows[0]);
         return { date: session.date, rows, best };
       }
@@ -260,6 +259,136 @@ function NumberWheel({
             </button>
           ))}
           <div className="h-9" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StepperControl({
+  label,
+  value,
+  unit,
+  min,
+  max,
+  step = 1,
+  onChange,
+  darkMode,
+  color,
+  disabled = false,
+}) {
+  const holdDelayRef = useRef(null);
+  const holdIntervalRef = useRef(null);
+  const currentValueRef = useRef(min);
+  const parsedValue = Number.parseFloat(value);
+  const currentValue = Number.isFinite(parsedValue)
+    ? Math.min(max, Math.max(min, parsedValue))
+    : min;
+  const displayValue = Number.isInteger(currentValue)
+    ? String(currentValue)
+    : String(Number(currentValue.toFixed(2)));
+
+  const changeBy = (delta) => {
+    if (disabled) return;
+    const nextValue = Math.min(
+      max,
+      Math.max(min, currentValueRef.current + delta),
+    );
+    currentValueRef.current = nextValue;
+    onChange(String(Number(nextValue.toFixed(3))));
+  };
+
+  const stopHold = () => {
+    clearTimeout(holdDelayRef.current);
+    clearInterval(holdIntervalRef.current);
+    holdDelayRef.current = null;
+    holdIntervalRef.current = null;
+  };
+
+  const startHold = (delta) => {
+    if (disabled) return;
+    stopHold();
+    holdDelayRef.current = window.setTimeout(() => {
+      holdIntervalRef.current = window.setInterval(() => {
+        changeBy(delta);
+      }, 90);
+    }, 360);
+  };
+
+  useEffect(() => {
+    currentValueRef.current = currentValue;
+  }, [currentValue]);
+
+  useEffect(() => stopHold, []);
+
+  const arrowClass = darkMode
+    ? "border-[#7f5d5d]"
+    : "border-[#c85f68]";
+
+  return (
+    <div className="min-w-0 flex-1">
+      <div
+        className={`mb-2 text-center text-[12px] font-bold ${disabled ? (darkMode ? "text-[#555]" : "text-[#aaa]") : color.text}`}
+      >
+        {label}
+      </div>
+      <div
+        className={`flex h-[108px] items-center rounded-2xl border px-3 ${
+          disabled
+            ? darkMode
+              ? "border-[#252525] bg-[#151515] opacity-70"
+              : "border-[#ebe2e2] bg-[#f5f1f1] opacity-70"
+            : darkMode
+              ? "border-[#2a2a2a] bg-[#111]"
+              : "border-[#eee6e6] bg-[#fffdfc]"
+        }`}
+      >
+        <div className="min-w-0 flex-1 text-center">
+          <span
+            className={`align-baseline text-[34px] font-black tabular-nums ${disabled ? (darkMode ? "text-[#777]" : "text-[#9f9fa6]") : color.text}`}
+          >
+            {displayValue}
+          </span>
+        </div>
+        <div
+          className={`ml-3 flex h-16 w-9 shrink-0 flex-col overflow-hidden border-l ${disabled ? (darkMode ? "border-[#252525]" : "border-[#e2dddd]") : darkMode ? "border-[#2a2a2a]" : "border-[#eadcdc]"}`}
+        >
+          <button
+            type="button"
+            onClick={() => changeBy(step)}
+            onPointerDown={() => startHold(step)}
+            onPointerUp={stopHold}
+            onPointerLeave={stopHold}
+            onPointerCancel={stopHold}
+            onBlur={stopHold}
+            onContextMenu={(e) => e.preventDefault()}
+            disabled={disabled || currentValue >= max}
+            className="flex flex-1 select-none touch-none items-center justify-center bg-transparent disabled:opacity-35"
+            style={{ WebkitTouchCallout: "none", WebkitUserSelect: "none" }}
+            aria-label={`Increase ${label}`}
+          >
+            <span
+              className={`block h-3 w-3 rotate-[225deg] border-b-2 border-r-2 ${arrowClass}`}
+            />
+          </button>
+          <button
+            type="button"
+            onClick={() => changeBy(-step)}
+            onPointerDown={() => startHold(-step)}
+            onPointerUp={stopHold}
+            onPointerLeave={stopHold}
+            onPointerCancel={stopHold}
+            onBlur={stopHold}
+            onContextMenu={(e) => e.preventDefault()}
+            disabled={disabled || currentValue <= min}
+            className="flex flex-1 select-none touch-none items-center justify-center bg-transparent disabled:opacity-35"
+            style={{ WebkitTouchCallout: "none", WebkitUserSelect: "none" }}
+            aria-label={`Decrease ${label}`}
+          >
+            <span
+              className={`block h-3 w-3 rotate-45 border-b-2 border-r-2 ${arrowClass}`}
+            />
+          </button>
         </div>
       </div>
     </div>
@@ -521,6 +650,7 @@ export default function App() {
   const [isBlocked, setIsBlocked] = useState(false);
   const [deletingSets, setDeletingSets] = useState({});
   const [finishingStopwatchSet, setFinishingStopwatchSet] = useState(null);
+  const [stopwatchFlash, setStopwatchFlash] = useState(false);
 
   const toggleSession = (id) =>
     setExpandedSessions((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -630,8 +760,10 @@ export default function App() {
         if (document.visibilityState === "visible") {
           setShowFullscreenStopwatch(true);
         }
-        // reset to 15000
-      }, 15000);
+        // this is the time that the fullscreen stopwatch will take over
+      }, 10000);
+      // }, 999999);
+      
     };
 
     resetInactivityTimer();
@@ -1061,6 +1193,7 @@ export default function App() {
               : row.reps
                 ? `${row.reps} reps`
                 : "-- reps",
+          repsValue: Number.parseFloat(row.reps) || 0,
         };
       }
     }
@@ -1071,7 +1204,9 @@ export default function App() {
 
     const setToFinish = currentUnlockedSet;
     setFinishingStopwatchSet(setToFinish.key);
+    setStopwatchFlash(true);
     resetStopwatch();
+    window.setTimeout(() => setStopwatchFlash(false), 260);
     window.setTimeout(() => {
       toggleSetComplete(setToFinish.eIdx, setToFinish.rIdx);
       setFinishingStopwatchSet(null);
@@ -1079,6 +1214,26 @@ export default function App() {
   };
   const isFinishingCurrentStopwatchSet =
     currentUnlockedSet?.key === finishingStopwatchSet;
+  const adjustStopwatchReps = (delta) => {
+    if (
+      !currentUnlockedSet ||
+      activeTab === "Cardio" ||
+      isFinishingCurrentStopwatchSet
+    ) {
+      return;
+    }
+
+    const nextReps = Math.min(
+      20,
+      Math.max(0, currentUnlockedSet.repsValue + delta),
+    );
+    updateRow(
+      currentUnlockedSet.eIdx,
+      currentUnlockedSet.rIdx,
+      "reps",
+      String(nextReps),
+    );
+  };
 
   return (
     <div
@@ -1130,7 +1285,15 @@ export default function App() {
         <div
           data-name="Fullscreen-Stopwatch"
           onClick={() => setShowFullscreenStopwatch(false)}
-          className={`fixed inset-0 z-[100] flex items-center justify-center animate-fade-in px-4 pb-8 ${darkMode ? DARK.bg : "bg-[#f9f7f4]"}`}
+          className={`fixed inset-0 z-[100] flex items-center justify-center animate-fade-in px-4 pb-8 transition-colors duration-200 ${
+            stopwatchFlash
+              ? darkMode
+                ? "bg-[#0d2413]"
+                : "bg-[#e6f8e9]"
+              : darkMode
+                ? DARK.bg
+                : "bg-[#f9f7f4]"
+          }`}
         >
           <div
             data-fullscreen-stopwatch-timer
@@ -1157,30 +1320,68 @@ export default function App() {
                 e.nativeEvent.stopImmediatePropagation();
               }}
               onClick={(e) => e.stopPropagation()}
-              className={`absolute inset-x-4 bottom-6 mx-auto flex max-w-[680px] items-center gap-3 rounded-2xl border p-3 shadow-[0_12px_30px_rgba(0,0,0,0.08)] ${darkMode ? "border-[#242424] bg-[#111]" : "border-[#eadcdc] bg-[#fffdfc]"}`}
+              className={`absolute inset-x-4 bottom-6 mx-auto flex max-w-[680px] flex-col gap-3 rounded-2xl border p-4 shadow-[0_12px_30px_rgba(0,0,0,0.08)] ${darkMode ? "border-[#242424] bg-[#111]" : "border-[#eadcdc] bg-[#fffdfc]"}`}
             >
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0">
                 <div
-                  className={`truncate text-[14px] font-black ${darkMode ? DARK.text : "text-[#222]"}`}
+                  className={`text-[24px] font-black uppercase tracking-[0.3px] ${c.text}`}
+                >
+                  {currentUnlockedSet.setLabel}
+                </div>
+                <div
+                  className={`mt-0.5 truncate text-[14px] font-bold ${darkMode ? DARK.textSecondary : "text-[#666]"}`}
                 >
                   {currentUnlockedSet.exercise}
                 </div>
-                <div className="mt-1 flex items-center gap-2 text-[12px] font-black">
-                  <span className={darkMode ? "text-[#777]" : "text-[#9a8b8b]"}>
-                    {currentUnlockedSet.setLabel}
-                  </span>
+                <div className="mt-2 flex items-center gap-2.5 text-[18px] font-black">
                   <span className={c.text}>{currentUnlockedSet.primary}</span>
                   <span className={darkMode ? "text-[#777]" : "text-[#b8adad]"}>
                     /
                   </span>
-                  <span className={c.text}>{currentUnlockedSet.secondary}</span>
+                  {activeTab === "Cardio" ? (
+                    <span className={c.text}>
+                      {currentUnlockedSet.secondary}
+                    </span>
+                  ) : (
+                    <div
+                      className={`flex items-center overflow-hidden rounded-xl border ${darkMode ? "border-[#2a2a2a] bg-[#171717]" : "border-[#eadcdc] bg-[#fff7f7]"}`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => adjustStopwatchReps(-1)}
+                        disabled={
+                          isFinishingCurrentStopwatchSet ||
+                          currentUnlockedSet.repsValue <= 0
+                        }
+                        className={`h-9 w-9 bg-transparent text-[20px] font-black disabled:opacity-35 ${c.text}`}
+                        aria-label="Decrease stopwatch reps"
+                      >
+                        -
+                      </button>
+                      <span className={`px-2 tabular-nums ${c.text}`}>
+                        {currentUnlockedSet.repsValue} reps
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => adjustStopwatchReps(1)}
+                        disabled={
+                          isFinishingCurrentStopwatchSet ||
+                          currentUnlockedSet.repsValue >= 20
+                        }
+                        className={`h-9 w-9 bg-transparent text-[20px] font-black disabled:opacity-35 ${c.text}`}
+                        aria-label="Increase stopwatch reps"
+                      >
+                        +
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
               <button
                 type="button"
                 onClick={finishStopwatchSet}
                 disabled={isFinishingCurrentStopwatchSet}
-                className={`${darkMode ? "border-[#243d2a] bg-[#142018] text-[#5ccf73]" : "border-[#cfead5] bg-[#e8f7eb] text-[#39a852]"} shrink-0 rounded-xl border px-4 py-3 text-[12px] font-black transition-all duration-200 disabled:scale-95`}
+                className={`${darkMode ? "border-[#243d2a] bg-[#142018] text-[#5ccf73]" : "border-[#cfead5] bg-[#e8f7eb] text-[#39a852]"} min-h-[56px] w-full rounded-xl border px-5 py-4 text-[14px] font-black transition-all duration-200 disabled:scale-95`}
               >
                 {isFinishingCurrentStopwatchSet ? "✓" : "Finish set"}
               </button>
@@ -1524,7 +1725,7 @@ export default function App() {
                               })()
                             ) : (
                               <div className="flex gap-2">
-                                <NumberWheel
+                                <StepperControl
                                   label="Kg"
                                   value={row.weight}
                                   unit="kg"
@@ -1539,7 +1740,7 @@ export default function App() {
                                   color={c}
                                   disabled={setComplete}
                                 />
-                                <NumberWheel
+                                <StepperControl
                                   label="Reps"
                                   value={row.reps}
                                   unit="reps"
