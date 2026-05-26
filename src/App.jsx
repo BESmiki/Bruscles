@@ -1295,33 +1295,34 @@ export default function App() {
                 : "bg-[#f9f7f4]"
           }`}
         >
-          <div
-            data-fullscreen-stopwatch-timer
-            onPointerDown={(e) => {
-              e.stopPropagation();
-              e.nativeEvent.stopImmediatePropagation();
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              resetStopwatch();
-            }}
-            className={`text-[96px] sm:text-[140px] font-bold ${c.text} tracking-[2px] tabular-nums cursor-pointer`}
-          >
-            {String(Math.floor(elapsed / 60)).padStart(2, "0")}:
-            {String(elapsed % 60).padStart(2, "0")}
-          </div>
-          {currentUnlockedSet && (
+          <div className="flex w-full max-w-[680px] flex-col items-stretch gap-4">
             <div
-              key={currentUnlockedSet.key}
-              data-name="Fullscreen-Current-Set"
-              data-fullscreen-stopwatch-controls
+              data-fullscreen-stopwatch-timer
               onPointerDown={(e) => {
                 e.stopPropagation();
                 e.nativeEvent.stopImmediatePropagation();
               }}
-              onClick={(e) => e.stopPropagation()}
-              className={`absolute inset-x-4 bottom-6 mx-auto flex max-w-[680px] flex-col gap-3 rounded-2xl border p-4 shadow-[0_12px_30px_rgba(0,0,0,0.08)] ${darkMode ? "border-[#242424] bg-[#111]" : "border-[#eadcdc] bg-[#fffdfc]"}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                resetStopwatch();
+              }}
+              className={`text-center text-[96px] sm:text-[140px] font-bold ${c.text} tracking-[2px] tabular-nums cursor-pointer`}
             >
+              {String(Math.floor(elapsed / 60)).padStart(2, "0")}:
+              {String(elapsed % 60).padStart(2, "0")}
+            </div>
+            {currentUnlockedSet && (
+              <div
+                key={currentUnlockedSet.key}
+                data-name="Fullscreen-Current-Set"
+                data-fullscreen-stopwatch-controls
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                  e.nativeEvent.stopImmediatePropagation();
+                }}
+                onClick={(e) => e.stopPropagation()}
+                className={`mx-auto flex w-full flex-col gap-3 rounded-2xl border p-4 shadow-[0_12px_30px_rgba(0,0,0,0.08)] ${darkMode ? "border-[#242424] bg-[#111]" : "border-[#eadcdc] bg-[#fffdfc]"}`}
+              >
               <div className="min-w-0">
                 <div
                   className={`text-[24px] font-black uppercase tracking-[0.3px] ${c.text}`}
@@ -1385,8 +1386,9 @@ export default function App() {
               >
                 {isFinishingCurrentStopwatchSet ? "✓" : "Finish set"}
               </button>
-            </div>
-          )}
+              </div>
+            )}
+          </div>
         </div>
       )}
       <div data-name="Main-Content-Wrapper" className="max-w-[680px] mx-auto">
