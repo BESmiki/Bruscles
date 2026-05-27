@@ -158,7 +158,9 @@ function getLastStats(history, exercise) {
       const exs = session.data[tab] || [];
       const match = exs.find((e) => e.exercise === exercise);
       if (match && match.rows?.some(isFilledSet)) {
-        const rows = match.rows.filter(isFilledSet);
+        const rows = match.rows
+          .filter(isFilledSet)
+          .map((row) => ({ ...row, complete: false }));
         const best = rows.reduce((b, r) => {
           const bWeight = parseFloat(b.weight) || 0;
           const rWeight = parseFloat(r.weight) || 0;
@@ -321,9 +323,11 @@ function StepperControl({
 
   useEffect(() => stopHold, []);
 
-  const arrowClass = darkMode
-    ? "border-[#7f5d5d]"
-    : "border-[#c85f68]";
+  const arrowClass = disabled
+    ? darkMode
+      ? "border-[#555]"
+      : "border-[#aaa]"
+    : color.borderAccent;
 
   return (
     <div className="min-w-0 flex-1">
@@ -1003,7 +1007,12 @@ export default function App() {
         k,
         v
           .filter((e) => e.exercise)
-          .map((e) => ({ ...e, rows: e.rows.filter(isFilledSet) }))
+          .map((e) => ({
+            ...e,
+            rows: e.rows
+              .filter(isFilledSet)
+              .map((row) => ({ ...row, complete: false })),
+          }))
           .filter((e) => e.rows.length > 0),
       ]),
     );
@@ -1024,6 +1033,17 @@ export default function App() {
     localStorage.setItem("total_session_time", "0");
     localStorage.setItem("last_seen_timestamp", String(Date.now()));
     setSaved(true);
+    setEntries((prev) =>
+      Object.fromEntries(
+        Object.entries(prev).map(([tab, exercises]) => [
+          tab,
+          exercises.map((entry) => ({
+            ...entry,
+            rows: entry.rows.map((row) => ({ ...row, complete: false })),
+          })),
+        ]),
+      ),
+    );
     setTimeout(() => {
       setEntries({
         Push: [emptyEntry()],
@@ -1153,6 +1173,7 @@ export default function App() {
     (count, tab) => count + tab.filter((entry) => entry.exercise).length,
     0,
   );
+  const hasSelectedExercise = selectedExerciseCount > 0;
   const petImage =
     selectedExerciseCount > 5
       ? "assets/tired.png"
@@ -1484,16 +1505,6 @@ export default function App() {
             data-name="Workout-Log-View"
             className={`animate-fade-in ${isBlocked ? "pointer-events-none" : ""}`}
           >
-            {" "}
-            {/* save session button */}
-            <button
-              onClick={hasWorkoutData ? saveSession : undefined}
-              className={`w-full py-3 rounded-xl border-none text-white text-[14px] font-bold cursor-pointer transition-all duration-300 mb-2 ${
-                hasWorkoutData ? "" : "invisible pointer-events-none"
-              } ${saved ? "bg-[#a8d8a8]" : "bg-[#b0c4de]"}`}
-            >
-              {saved ? "✅ Session Saved!" : "Workout Finished"}
-            </button>
             {/* Subsection: List of Exercises */}
             <div data-name="Exercise-List" className="flex flex-col gap-3.5">
               {entries[activeTab].map((entry, eIdx) => {
@@ -1931,7 +1942,7 @@ export default function App() {
                         <button
                           data-name="Add-Set-Button"
                           onClick={() => addSet(eIdx)}
-                          className={`w-full py-3 rounded-xl border border-[#eadcdc] ${darkMode ? `${DARK.bgCardAlt} ${DARK.textSecondary}` : "bg-[#faf3f3] text-[#a97070]"} text-[13px] font-black cursor-pointer flex items-center justify-center gap-1.5`}
+                          className={`w-full py-3 rounded-xl border ${c.border} ${c.bg} ${c.text} text-[13px] font-black cursor-pointer flex items-center justify-center gap-1.5 transition-colors duration-200`}
                         >
                           <span className="text-[16px] font-normal leading-none">
                             +
@@ -2553,10 +2564,37 @@ export default function App() {
                 className={
                   showExerciseSelectModal
                     ? "hidden"
-                    : "mb-2 flex flex-col gap-2"
+                    : "mb-2 flex items-stretch"
                 }
               >
                 <button
+                  type="button"
+                  onClick={saveSession}
+                  disabled={!hasWorkoutData}
+                  className={`min-w-0 overflow-hidden rounded-xl text-[14px] font-bold transition-all duration-300 ease-out ${
+                    hasSelectedExercise
+                      ? `mr-2 basis-1/2 px-3 py-3 opacity-100 translate-y-0 ${
+                          saved
+                            ? "bg-[#a8d8a8] text-white border border-[#a8d8a8]"
+                            : darkMode
+                              ? "bg-transparent text-[#f0f0f0] border border-[#333]"
+                              : "bg-white text-[#556579] border border-[#DCE1EA]"
+                        } ${
+                          hasWorkoutData
+                            ? "cursor-pointer"
+                            : "cursor-not-allowed opacity-60"
+                        }`
+                      : "mr-0 basis-0 px-0 py-3 opacity-0 -translate-y-1 pointer-events-none border border-transparent"
+                  }`}
+                  aria-hidden={!hasSelectedExercise}
+                  tabIndex={hasSelectedExercise ? 0 : -1}
+                >
+                  <span className="block truncate">
+                    {saved ? "Session saved" : "Finish workout"}
+                  </span>
+                </button>
+                <button
+                  type="button"
                   onClick={() => {
                     if (canAddExercise) {
                       // All exercises filled — add new slot and open modal for it
@@ -2574,9 +2612,9 @@ export default function App() {
                       setShowExerciseSelectModal(true);
                     }
                   }}
-                  className={`w-full py-3 rounded-xl border-none ${c.bg} ${c.text} text-[16px] font-bold cursor-pointer transition-all duration-200 flex items-center justify-center gap-2`}
+                  className={`min-w-0 flex-1 py-3 rounded-xl border-none ${c.bg} ${c.text} text-[16px] font-bold cursor-pointer transition-all duration-300 ease-out flex items-center justify-center gap-2`}
                 >
-                  + Add Workout
+                  {hasSelectedExercise ? "+ Add Exercise" : "+ Add Workout"}
                 </button>
               </div>
 
