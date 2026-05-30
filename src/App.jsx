@@ -97,6 +97,18 @@ function formatDate(d) {
   });
 }
 
+function getHistoryMonthKey(d) {
+  const date = new Date(d);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function formatHistoryMonth(d) {
+  return new Date(d).toLocaleDateString("en-AU", {
+    month: "short",
+    year: "numeric",
+  });
+}
+
 function formatDaysSince(d) {
   const last = new Date(d);
   const today = new Date();
@@ -655,6 +667,10 @@ export default function App() {
   const [deletingSets, setDeletingSets] = useState({});
   const [finishingStopwatchSet, setFinishingStopwatchSet] = useState(null);
   const [stopwatchFlash, setStopwatchFlash] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [isAppInstalled, setIsAppInstalled] = useState(false);
+  const [installMessage, setInstallMessage] = useState("");
+  const [selectedHistoryMonth, setSelectedHistoryMonth] = useState("");
 
   const toggleSession = (id) =>
     setExpandedSessions((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -677,6 +693,29 @@ export default function App() {
     requestAnimationFrame(() =>
       window.scrollTo({ top: scrollY, behavior: "instant" }),
     );
+  };
+
+  const installApp = async () => {
+    if (isAppInstalled) {
+      setInstallMessage("App already installed");
+      return;
+    }
+
+    if (!installPrompt) {
+      setInstallMessage("Install will appear when available");
+      return;
+    }
+
+    installPrompt.prompt();
+    const choice = await installPrompt.userChoice;
+    setInstallPrompt(null);
+
+    if (choice.outcome === "accepted") {
+      setIsAppInstalled(true);
+      setInstallMessage("App installed");
+    } else {
+      setInstallMessage("Install dismissed");
+    }
   };
 
   const [deleteExerciseTab, setDeleteExerciseTab] = useState("Push");
@@ -702,6 +741,36 @@ export default function App() {
     );
     return () => clearInterval(t);
   }, [startTime]);
+
+  useEffect(() => {
+    const isStandalone =
+      window.matchMedia?.("(display-mode: standalone)").matches ||
+      window.navigator.standalone === true;
+    setIsAppInstalled(isStandalone);
+
+    const handleBeforeInstallPrompt = (event) => {
+      event.preventDefault();
+      setInstallPrompt(event);
+      setInstallMessage("");
+    };
+
+    const handleAppInstalled = () => {
+      setInstallPrompt(null);
+      setIsAppInstalled(true);
+      setInstallMessage("App installed");
+    };
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    window.addEventListener("appinstalled", handleAppInstalled);
+
+    return () => {
+      window.removeEventListener(
+        "beforeinstallprompt",
+        handleBeforeInstallPrompt,
+      );
+      window.removeEventListener("appinstalled", handleAppInstalled);
+    };
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -767,7 +836,6 @@ export default function App() {
         // this is the time that the fullscreen stopwatch will take over
       }, 10000);
       // }, 999999);
-      
     };
 
     resetInactivityTimer();
@@ -800,6 +868,19 @@ export default function App() {
       if (h) setHistory(JSON.parse(h));
     } catch {}
   }, []);
+
+  useEffect(() => {
+    if (history.length === 0) {
+      setSelectedHistoryMonth("");
+      return;
+    }
+
+    const monthKeys = history.map((session) => getHistoryMonthKey(session.date));
+    if (!selectedHistoryMonth || !monthKeys.includes(selectedHistoryMonth)) {
+      setSelectedHistoryMonth(monthKeys[0]);
+    }
+  }, [history, selectedHistoryMonth]);
+
   useEffect(() => {
     try {
       const ce = localStorage.getItem("custom_exercises");
@@ -900,8 +981,8 @@ export default function App() {
       const rows = tab[eIdx].rows;
       const prev2 = rows[rows.length - 1];
       const newSet = {
-        weight: prev2.weight,
-        reps: prev2.reps ? String(parseInt(prev2.reps) + 1) : "",
+        weight: prev2?.weight || "",
+        reps: prev2?.reps ? String(parseInt(prev2.reps) + 1) : "",
         complete: false,
       };
       tab[eIdx] = { ...tab[eIdx], rows: [...rows, newSet] };
@@ -944,7 +1025,6 @@ export default function App() {
 
   const removeExercise = (idx) => {
     setEntries((prev) => {
-      if (prev[activeTab][idx]?.rows?.some((row) => row.complete)) return prev;
       const tab = prev[activeTab].filter((_, i) => i !== idx);
       return { ...prev, [activeTab]: tab.length ? tab : [emptyEntry()] };
     });
@@ -1189,6 +1269,25 @@ export default function App() {
   const hasWorkoutData = Object.values(entries).some((tab) =>
     tab.some((entry) => entry.exercise && entry.rows?.some(isFilledSet)),
   );
+  const historyMonthGroups = history.reduce((groups, session) => {
+    const key = getHistoryMonthKey(session.date);
+    const existing = groups.find((group) => group.key === key);
+    if (existing) {
+      existing.sessions.push(session);
+      return groups;
+    }
+    groups.push({
+      key,
+      label: formatHistoryMonth(session.date),
+      sessions: [session],
+    });
+    return groups;
+  }, []);
+  const selectedHistorySessions =
+    historyMonthGroups.find((group) => group.key === selectedHistoryMonth)
+      ?.sessions ||
+    historyMonthGroups[0]?.sessions ||
+    [];
   const currentUnlockedSet = (() => {
     for (let eIdx = 0; eIdx < activeEntries.length; eIdx++) {
       const entry = activeEntries[eIdx];
@@ -1344,69 +1443,82 @@ export default function App() {
                 onClick={(e) => e.stopPropagation()}
                 className={`mx-auto flex w-full flex-col gap-3 rounded-2xl border p-4 shadow-[0_12px_30px_rgba(0,0,0,0.08)] ${darkMode ? "border-[#242424] bg-[#111]" : "border-[#eadcdc] bg-[#fffdfc]"}`}
               >
-              <div className="min-w-0">
-                <div
-                  className={`text-[24px] font-black uppercase tracking-[0.3px] ${c.text}`}
-                >
-                  {currentUnlockedSet.setLabel}
-                </div>
-                <div
-                  className={`mt-0.5 truncate text-[14px] font-bold ${darkMode ? DARK.textSecondary : "text-[#666]"}`}
-                >
-                  {currentUnlockedSet.exercise}
-                </div>
-                <div className="mt-2 flex items-center gap-2.5 text-[18px] font-black">
-                  <span className={c.text}>{currentUnlockedSet.primary}</span>
-                  <span className={darkMode ? "text-[#777]" : "text-[#b8adad]"}>
-                    /
-                  </span>
-                  {activeTab === "Cardio" ? (
-                    <span className={c.text}>
-                      {currentUnlockedSet.secondary}
-                    </span>
-                  ) : (
-                    <div
-                      className={`flex items-center overflow-hidden rounded-xl border ${darkMode ? "border-[#2a2a2a] bg-[#171717]" : "border-[#eadcdc] bg-[#fff7f7]"}`}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => adjustStopwatchReps(-1)}
-                        disabled={
-                          isFinishingCurrentStopwatchSet ||
-                          currentUnlockedSet.repsValue <= 0
-                        }
-                        className={`h-9 w-9 bg-transparent text-[20px] font-black disabled:opacity-35 ${c.text}`}
-                        aria-label="Decrease stopwatch reps"
-                      >
-                        -
-                      </button>
-                      <span className={`px-2 tabular-nums ${c.text}`}>
-                        {currentUnlockedSet.repsValue} reps
+                <div className="min-w-0">
+                  <div
+                    className={`text-[24px] font-black uppercase tracking-[0.3px] ${c.text}`}
+                  >
+                    {currentUnlockedSet.setLabel}
+                  </div>
+                  <div
+                    className={`mt-0.5 truncate text-[14px] font-bold ${darkMode ? DARK.textSecondary : "text-[#666]"}`}
+                  >
+                    {currentUnlockedSet.exercise}
+                  </div>
+                  <div className="mt-3 flex items-center justify-between gap-4 text-[24px] font-black">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <span className={c.text}>
+                        {currentUnlockedSet.primary}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => adjustStopwatchReps(1)}
-                        disabled={
-                          isFinishingCurrentStopwatchSet ||
-                          currentUnlockedSet.repsValue >= 20
-                        }
-                        className={`h-9 w-9 bg-transparent text-[20px] font-black disabled:opacity-35 ${c.text}`}
-                        aria-label="Increase stopwatch reps"
-                      >
-                        +
-                      </button>
+                      {activeTab === "Cardio" && (
+                        <>
+                          <span
+                            className={
+                              darkMode ? "text-[#777]" : "text-[#b8adad]"
+                            }
+                          >
+                            /
+                          </span>
+                          <span className={c.text}>
+                            {currentUnlockedSet.secondary}
+                          </span>
+                        </>
+                      )}
                     </div>
-                  )}
+                    {activeTab !== "Cardio" && (
+                      <div
+                        className={`ml-auto flex shrink-0 items-center overflow-hidden rounded-2xl border ${darkMode ? "border-[#2a2a2a] bg-[#171717]" : "border-[#eadcdc] bg-[#fff7f7]"}`}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => adjustStopwatchReps(-1)}
+                          disabled={
+                            isFinishingCurrentStopwatchSet ||
+                            currentUnlockedSet.repsValue <= 0
+                          }
+                          className={`h-14 w-14 bg-transparent text-[34px] font-black disabled:opacity-35 ${c.text}`}
+                          aria-label="Decrease stopwatch reps"
+                        >
+                          -
+                        </button>
+                        <span
+                          className={`min-w-[96px] px-4 text-center text-[26px] tabular-nums ${c.text}`}
+                        >
+                          {currentUnlockedSet.repsValue} reps
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => adjustStopwatchReps(1)}
+                          disabled={
+                            isFinishingCurrentStopwatchSet ||
+                            currentUnlockedSet.repsValue >= 20
+                          }
+                          className={`h-14 w-14 bg-transparent text-[34px] font-black disabled:opacity-35 ${c.text}`}
+                          aria-label="Increase stopwatch reps"
+                        >
+                          +
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-              <button
-                type="button"
-                onClick={finishStopwatchSet}
-                disabled={isFinishingCurrentStopwatchSet}
-                className={`${darkMode ? "border-[#243d2a] bg-[#142018] text-[#5ccf73]" : "border-[#cfead5] bg-[#e8f7eb] text-[#39a852]"} min-h-[56px] w-full rounded-xl border px-5 py-4 text-[14px] font-black transition-all duration-200 disabled:scale-95`}
-              >
-                {isFinishingCurrentStopwatchSet ? "✓" : "Finish set"}
-              </button>
+                <button
+                  type="button"
+                  onClick={finishStopwatchSet}
+                  disabled={isFinishingCurrentStopwatchSet}
+                  className={`${darkMode ? "border-[#243d2a] bg-[#142018] text-[#5ccf73]" : "border-[#cfead5] bg-[#e8f7eb] text-[#39a852]"} min-h-[56px] w-full rounded-xl border px-5 py-4 text-[24px] font-black transition-all duration-200 disabled:scale-95`}
+                >
+                  {isFinishingCurrentStopwatchSet ? "✓" : "Finish set"}
+                </button>
               </div>
             )}
           </div>
@@ -1475,30 +1587,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* SECTION: View Switcher */}
-        <div
-          data-name="View-Toggle-Navigation"
-          className={`flex mb-5 p-[5px] rounded-[14px] gap-[2px] ${darkMode ? DARK.bgTab : "bg-[#e0dbd6]"}`}
-        >
-          {["log", "history", "stats"].map((v) => (
-            <button
-              key={v}
-              onClick={() => setView(v)}
-              className={`flex-1 py-[9px] rounded-[10px] border-none cursor-pointer text-[13px] font-semibold transition-all duration-200 ${
-                view === v
-                  ? darkMode
-                    ? "bg-[#ffffff] text-[#000000]"
-                    : "bg-[#f0f0f0] text-[#333]"
-                  : darkMode
-                    ? `bg-transparent ${DARK.textSecondary}`
-                    : "bg-transparent text-[#888]"
-              }`}
-            >
-              {v === "log" ? "Log" : v === "history" ? "History" : "Stats"}
-            </button>
-          ))}
-        </div>
-
         {/* SECTION: Logging View */}
         {view === "log" && (
           <div
@@ -1537,16 +1625,24 @@ export default function App() {
                         </span>
                         <span className="hidden">›</span>
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => removeExercise(eIdx)}
+                        className={`h-8 shrink-0 rounded-full px-3 text-[12px] font-black transition-colors ${darkMode ? "border border-[#2a2a2a] bg-[#171717] text-[#8f6f6f] cursor-pointer" : "border border-[#f0dddd] bg-[#fff7f7] text-[#b77b7b] cursor-pointer"}`}
+                        aria-label={`Delete ${entry.exercise}`}
+                      >
+                        Delete
+                      </button>
                       {entries[activeTab].filter((e) => e.exercise).length >
                         1 &&
                         !entry.rows?.some((row) => row.complete) && (
-                        <button
-                          onClick={() => removeExercise(eIdx)}
-                          className={`h-8 w-8 rounded-full border-none cursor-pointer text-[15px] ${darkMode ? `${DARK.bgTabInactive} ${DARK.textMuted}` : "bg-[#f6eeee] text-[#b77b7b]"}`}
-                        >
-                          ✕
-                        </button>
-                      )}
+                          <button
+                            onClick={() => removeExercise(eIdx)}
+                            className={`h-8 w-8 rounded-full border-none cursor-pointer text-[15px] ${darkMode ? `${DARK.bgTabInactive} ${DARK.textMuted}` : "bg-[#f6eeee] text-[#b77b7b]"}`}
+                          >
+                            ✕
+                          </button>
+                        )}
                     </div>
 
                     {/* Previous Session Stats */}
@@ -1612,330 +1708,353 @@ export default function App() {
                             deletingSets[`${activeTab}-${eIdx}-${rIdx}`],
                           );
                           return (
-                          <div
-                            data-name="Single-Set-Row"
-                            key={rIdx}
-                            className={`${darkMode ? DARK.bgInput : setComplete ? "bg-[#f9f4f4]" : "bg-[#fffdfc]"} border ${setComplete ? "border-[#e7dada]" : "border-[#efe6e6]"} rounded-2xl px-3 py-3 max-h-[260px] animate-fade-in transition-all duration-300 ${deletingSet ? "animate-set-delete pointer-events-none" : ""}`}
-                          >
-                            <div className="mb-3 flex items-center justify-between">
-                              <span
-                                className={`text-[12px] font-black uppercase tracking-[0.6px] ${setComplete ? "text-[#39a852]" : c.text}`}
-                              >
-                                Set {rIdx + 1}
-                              </span>
-                            </div>
-
-                            <div className="flex items-stretch gap-2.5">
-                              <div className="min-w-0 flex-1">
-                            {activeTab === "Cardio" ? (
-                              (() => {
-                                const distance = Number.parseFloat(row.weight);
-                                const safeDistance = Number.isFinite(distance)
-                                  ? Math.max(0, distance)
-                                  : 0;
-                                let wholeKm = Math.floor(safeDistance);
-                                let tenthsKm = Math.round(
-                                  (safeDistance - wholeKm) * 10,
-                                );
-                                if (tenthsKm === 10) {
-                                  wholeKm += 1;
-                                  tenthsKm = 0;
-                                }
-                                const { minutes, seconds } = getCardioTimeParts(
-                                  row.reps,
-                                );
-                                const saveDistance = (km, tenth) =>
-                                  updateRow(
-                                    eIdx,
-                                    rIdx,
-                                    "weight",
-                                    (km + tenth / 10)
-                                      .toFixed(1)
-                                      .replace(/\.0$/, ""),
-                                  );
-                                const saveTime = (nextMinutes, nextSeconds) =>
-                                  updateRow(
-                                    eIdx,
-                                    rIdx,
-                                    "reps",
-                                    ((nextMinutes * 60 + nextSeconds) / 60)
-                                      .toFixed(4)
-                                      .replace(/\.?0+$/, ""),
-                                  );
-
-                                return (
-                                  <div className="flex gap-2">
-                                    <NumberWheel
-                                      label="Km"
-                                      value={wholeKm}
-                                      unit="km"
-                                      min={0}
-                                      max={100}
-                                      onChange={(nextValue) =>
-                                        saveDistance(
-                                          Number.parseInt(nextValue, 10),
-                                          tenthsKm,
-                                        )
-                                      }
-                                      darkMode={darkMode}
-                                      color={c}
-                                      disabled={setComplete}
-                                    />
-                                    <NumberWheel
-                                      label=".km"
-                                      value={tenthsKm}
-                                      unit=""
-                                      min={0}
-                                      max={9}
-                                      formatOption={(option) => `.${option}`}
-                                      onChange={(nextValue) =>
-                                        saveDistance(
-                                          wholeKm,
-                                          Number.parseInt(nextValue, 10),
-                                        )
-                                      }
-                                      darkMode={darkMode}
-                                      color={c}
-                                      disabled={setComplete}
-                                    />
-                                    <NumberWheel
-                                      label="Min"
-                                      value={minutes}
-                                      unit="m"
-                                      min={0}
-                                      max={240}
-                                      onChange={(nextValue) =>
-                                        saveTime(
-                                          Number.parseInt(nextValue, 10),
-                                          seconds,
-                                        )
-                                      }
-                                      darkMode={darkMode}
-                                      color={c}
-                                      disabled={setComplete}
-                                    />
-                                    <NumberWheel
-                                      label="Sec"
-                                      value={seconds}
-                                      unit="s"
-                                      min={0}
-                                      max={59}
-                                      formatOption={(option) =>
-                                        `${String(option).padStart(2, "0")}s`
-                                      }
-                                      onChange={(nextValue) =>
-                                        saveTime(
-                                          minutes,
-                                          Number.parseInt(nextValue, 10),
-                                        )
-                                      }
-                                      darkMode={darkMode}
-                                      color={c}
-                                      disabled={setComplete}
-                                    />
-                                  </div>
-                                );
-                              })()
-                            ) : (
-                              <div className="flex gap-2">
-                                <StepperControl
-                                  label="Kg"
-                                  value={row.weight}
-                                  unit="kg"
-                                  min={0}
-                                  max={250}
-                                  step={1}
-                                  formatOption={(option) => `${option}kg`}
-                                  onChange={(nextValue) =>
-                                    updateRow(eIdx, rIdx, "weight", nextValue)
-                                  }
-                                  darkMode={darkMode}
-                                  color={c}
-                                  disabled={setComplete}
-                                />
-                                <StepperControl
-                                  label="Reps"
-                                  value={row.reps}
-                                  unit="reps"
-                                  min={0}
-                                  max={20}
-                                  onChange={(nextValue) =>
-                                    updateRow(eIdx, rIdx, "reps", nextValue)
-                                  }
-                                  darkMode={darkMode}
-                                  color={c}
-                                  disabled={setComplete}
-                                />
-                              </div>
-                            )}
-                              </div>
-                              <div className="flex w-[82px] shrink-0 flex-col gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => requestRemoveSet(eIdx, rIdx)}
-                                  disabled={setComplete || deletingSet}
-                                  className={`${
-                                    setComplete
-                                      ? darkMode
-                                        ? "border-[#252525] bg-[#171717] text-[#555] cursor-not-allowed"
-                                        : "border-[#e2dddd] bg-[#f0eeee] text-[#b8b2b2] cursor-not-allowed"
-                                      : darkMode
-                                        ? "border-[#2a2a2a] bg-[#171717] text-[#8f6f6f] cursor-pointer"
-                                        : "border-[#f0dddd] bg-[#fff7f7] text-[#b77b7b] cursor-pointer"
-                                  } h-9 rounded-xl border text-[13px] font-black leading-none`}
-                                  aria-label={`Delete set ${rIdx + 1}`}
+                            <div
+                              data-name="Single-Set-Row"
+                              key={rIdx}
+                              className={`${darkMode ? DARK.bgInput : setComplete ? "bg-[#f9f4f4]" : "bg-[#fffdfc]"} border ${setComplete ? "border-[#e7dada]" : "border-[#efe6e6]"} rounded-2xl px-3 py-3 max-h-[260px] animate-fade-in transition-all duration-300 ${deletingSet ? "animate-set-delete pointer-events-none" : ""}`}
+                            >
+                              <div className="mb-3 flex items-center justify-between">
+                                <span
+                                  className={`text-[12px] font-black uppercase tracking-[0.6px] ${setComplete ? "text-[#39a852]" : c.text}`}
                                 >
-                                  x
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    toggleSetComplete(eIdx, rIdx)
-                                  }
-                                  className={`${
-                                    setComplete
-                                      ? darkMode
-                                        ? "bg-[#142018] text-[#5ccf73] border-[#243d2a]"
-                                        : "bg-[#e8f7eb] text-[#39a852] border-[#cfead5]"
-                                      : darkMode
-                                        ? "bg-[#171717] text-[#6fbd7b] border-[#2a2a2a]"
-                                        : "bg-[#f7fbf8] text-[#39a852] border-[#d8ecdd]"
-                                  } flex-1 rounded-xl border text-[11px] font-black leading-tight cursor-pointer`}
-                                >
-                                  {setComplete ? "Locked" : "Finish set"}
-                                </button>
+                                  Set {rIdx + 1}
+                                </span>
                               </div>
-                            </div>
-                            {false && (
-                              <>
-                                {/* Weight row */}
-                                <div className="flex items-center gap-1.5 mb-2">
-                                  <span
-                                    className={`text-[13px] font-semibold ${c.text} w-[52px]`}
-                                  >
-                                    {activeTab === "Cardio" ? "Dist" : "Weight"}
-                                  </span>
-                                  <span
-                                    className={`${darkMode ? DARK.bgCard : "bg-white"} border-2 ${c.border} ${c.text} rounded-lg py-[5px] px-2.5 text-[18px] font-black min-w-[50px] text-center`}
-                                  >
-                                    {row.weight || "—"}
-                                    {activeTab === "Cardio" ? "km" : ""}
-                                  </span>
-                                  <div className="flex gap-1 flex-1">
-                                    <button
-                                      onClick={() =>
-                                        updateRow(
-                                          eIdx,
-                                          rIdx,
-                                          "weight",
-                                          Math.max(
-                                            0,
-                                            (parseFloat(row.weight) || 0) - 1,
-                                          ).toString(),
-                                        )
-                                      }
-                                      className={`flex-1 ${c.bg} border ${c.border} ${c.text} rounded-lg py-[5px] text-[13px] font-bold cursor-pointer`}
-                                    >
-                                      −1
-                                    </button>
-                                    <button
-                                      onClick={() =>
-                                        updateRow(
-                                          eIdx,
-                                          rIdx,
-                                          "weight",
-                                          (
-                                            (parseFloat(row.weight) || 0) + 1
-                                          ).toString(),
-                                        )
-                                      }
-                                      className={`flex-1 ${c.bg} border ${c.border} ${c.text} rounded-lg py-[5px] text-[13px] font-bold cursor-pointer`}
-                                    >
-                                      +1
-                                    </button>
-                                    <button
-                                      onClick={() =>
-                                        updateRow(
-                                          eIdx,
-                                          rIdx,
-                                          "weight",
-                                          (
-                                            (parseFloat(row.weight) || 0) + 5
-                                          ).toString(),
-                                        )
-                                      }
-                                      className={`flex-1 ${c.bg} border ${c.border} ${c.text} rounded-lg py-[5px] text-[13px] font-bold cursor-pointer`}
-                                    >
-                                      +5
-                                    </button>
-                                  </div>
-                                </div>
 
-                                {/* Reps row */}
-                                <div className="flex items-center gap-1.5">
-                                  <span
-                                    className={`text-[13px] font-semibold ${c.text} w-[52px]`}
-                                  >
-                                    {activeTab === "Cardio" ? "Time" : "Reps"}
-                                  </span>
-                                  <span
-                                    className={`${darkMode ? DARK.bgCard : "bg-white"} border-2 ${c.border} ${c.text} rounded-lg py-[5px] px-2.5 text-[18px] font-black min-w-[50px] text-center`}
-                                  >
-                                    {row.reps || "—"}
-                                    {activeTab === "Cardio" ? "m" : ""}
-                                  </span>
-                                  <div className="flex gap-1 flex-1">
-                                    <button
-                                      onClick={() =>
+                              <div className="flex items-stretch gap-2.5">
+                                <div className="min-w-0 flex-1">
+                                  {activeTab === "Cardio" ? (
+                                    (() => {
+                                      const distance = Number.parseFloat(
+                                        row.weight,
+                                      );
+                                      const safeDistance = Number.isFinite(
+                                        distance,
+                                      )
+                                        ? Math.max(0, distance)
+                                        : 0;
+                                      let wholeKm = Math.floor(safeDistance);
+                                      let tenthsKm = Math.round(
+                                        (safeDistance - wholeKm) * 10,
+                                      );
+                                      if (tenthsKm === 10) {
+                                        wholeKm += 1;
+                                        tenthsKm = 0;
+                                      }
+                                      const { minutes, seconds } =
+                                        getCardioTimeParts(row.reps);
+                                      const saveDistance = (km, tenth) =>
                                         updateRow(
                                           eIdx,
                                           rIdx,
-                                          "reps",
-                                          Math.max(
-                                            0,
-                                            (parseFloat(row.reps) || 0) - 1,
-                                          ).toString(),
-                                        )
-                                      }
-                                      className={`flex-1 ${c.bg} border ${c.border} ${c.text} rounded-lg py-[5px] text-[13px] font-bold cursor-pointer`}
-                                    >
-                                      −1
-                                    </button>
-                                    <button
-                                      onClick={() =>
-                                        updateRow(
-                                          eIdx,
-                                          rIdx,
-                                          "reps",
-                                          (
-                                            (parseFloat(row.reps) || 0) + 1
-                                          ).toString(),
-                                        )
-                                      }
-                                      className={`flex-1 ${c.bg} border ${c.border} ${c.text} rounded-lg py-[5px] text-[13px] font-bold cursor-pointer`}
-                                    >
-                                      +1
-                                    </button>
-                                    <button
-                                      onClick={() =>
+                                          "weight",
+                                          (km + tenth / 10)
+                                            .toFixed(1)
+                                            .replace(/\.0$/, ""),
+                                        );
+                                      const saveTime = (
+                                        nextMinutes,
+                                        nextSeconds,
+                                      ) =>
                                         updateRow(
                                           eIdx,
                                           rIdx,
                                           "reps",
                                           (
-                                            (parseFloat(row.reps) || 0) + 5
-                                          ).toString(),
-                                        )
-                                      }
-                                      className={`flex-1 ${c.bg} border ${c.border} ${c.text} rounded-lg py-[5px] text-[13px] font-bold cursor-pointer`}
-                                    >
-                                      +5
-                                    </button>
-                                  </div>
+                                            (nextMinutes * 60 + nextSeconds) /
+                                            60
+                                          )
+                                            .toFixed(4)
+                                            .replace(/\.?0+$/, ""),
+                                        );
+
+                                      return (
+                                        <div className="flex gap-2">
+                                          <NumberWheel
+                                            label="Km"
+                                            value={wholeKm}
+                                            unit="km"
+                                            min={0}
+                                            max={100}
+                                            onChange={(nextValue) =>
+                                              saveDistance(
+                                                Number.parseInt(nextValue, 10),
+                                                tenthsKm,
+                                              )
+                                            }
+                                            darkMode={darkMode}
+                                            color={c}
+                                            disabled={setComplete}
+                                          />
+                                          <NumberWheel
+                                            label=".km"
+                                            value={tenthsKm}
+                                            unit=""
+                                            min={0}
+                                            max={9}
+                                            formatOption={(option) =>
+                                              `.${option}`
+                                            }
+                                            onChange={(nextValue) =>
+                                              saveDistance(
+                                                wholeKm,
+                                                Number.parseInt(nextValue, 10),
+                                              )
+                                            }
+                                            darkMode={darkMode}
+                                            color={c}
+                                            disabled={setComplete}
+                                          />
+                                          <NumberWheel
+                                            label="Min"
+                                            value={minutes}
+                                            unit="m"
+                                            min={0}
+                                            max={240}
+                                            onChange={(nextValue) =>
+                                              saveTime(
+                                                Number.parseInt(nextValue, 10),
+                                                seconds,
+                                              )
+                                            }
+                                            darkMode={darkMode}
+                                            color={c}
+                                            disabled={setComplete}
+                                          />
+                                          <NumberWheel
+                                            label="Sec"
+                                            value={seconds}
+                                            unit="s"
+                                            min={0}
+                                            max={59}
+                                            formatOption={(option) =>
+                                              `${String(option).padStart(2, "0")}s`
+                                            }
+                                            onChange={(nextValue) =>
+                                              saveTime(
+                                                minutes,
+                                                Number.parseInt(nextValue, 10),
+                                              )
+                                            }
+                                            darkMode={darkMode}
+                                            color={c}
+                                            disabled={setComplete}
+                                          />
+                                        </div>
+                                      );
+                                    })()
+                                  ) : (
+                                    <div className="flex gap-2">
+                                      <StepperControl
+                                        label="Kg"
+                                        value={row.weight}
+                                        unit="kg"
+                                        min={0}
+                                        max={250}
+                                        step={1}
+                                        formatOption={(option) => `${option}kg`}
+                                        onChange={(nextValue) =>
+                                          updateRow(
+                                            eIdx,
+                                            rIdx,
+                                            "weight",
+                                            nextValue,
+                                          )
+                                        }
+                                        darkMode={darkMode}
+                                        color={c}
+                                        disabled={setComplete}
+                                      />
+                                      <StepperControl
+                                        label="Reps"
+                                        value={row.reps}
+                                        unit="reps"
+                                        min={0}
+                                        max={20}
+                                        onChange={(nextValue) =>
+                                          updateRow(
+                                            eIdx,
+                                            rIdx,
+                                            "reps",
+                                            nextValue,
+                                          )
+                                        }
+                                        darkMode={darkMode}
+                                        color={c}
+                                        disabled={setComplete}
+                                      />
+                                    </div>
+                                  )}
                                 </div>
-                              </>
-                            )}
-                          </div>
+                                <div className="flex w-[82px] shrink-0 flex-col gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => requestRemoveSet(eIdx, rIdx)}
+                                    disabled={setComplete || deletingSet}
+                                    className={`${
+                                      setComplete
+                                        ? darkMode
+                                          ? "border-[#252525] bg-[#171717] text-[#555] cursor-not-allowed"
+                                          : "border-[#e2dddd] bg-[#f0eeee] text-[#b8b2b2] cursor-not-allowed"
+                                        : darkMode
+                                          ? "border-[#2a2a2a] bg-[#171717] text-[#8f6f6f] cursor-pointer"
+                                          : "border-[#f0dddd] bg-[#fff7f7] text-[#b77b7b] cursor-pointer"
+                                    } h-9 rounded-xl border text-[13px] font-black leading-none`}
+                                    aria-label={`Delete set ${rIdx + 1}`}
+                                  >
+                                    x
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      toggleSetComplete(eIdx, rIdx)
+                                    }
+                                    className={`${
+                                      setComplete
+                                        ? darkMode
+                                          ? "bg-[#142018] text-[#5ccf73] border-[#243d2a]"
+                                          : "bg-[#e8f7eb] text-[#39a852] border-[#cfead5]"
+                                        : darkMode
+                                          ? "bg-[#171717] text-[#6fbd7b] border-[#2a2a2a]"
+                                          : "bg-[#f7fbf8] text-[#39a852] border-[#d8ecdd]"
+                                    } flex-1 rounded-xl border text-[11px] font-black leading-tight cursor-pointer`}
+                                  >
+                                    {setComplete ? "Locked" : "Finish set"}
+                                  </button>
+                                </div>
+                              </div>
+                              {false && (
+                                <>
+                                  {/* Weight row */}
+                                  <div className="flex items-center gap-1.5 mb-2">
+                                    <span
+                                      className={`text-[13px] font-semibold ${c.text} w-[52px]`}
+                                    >
+                                      {activeTab === "Cardio"
+                                        ? "Dist"
+                                        : "Weight"}
+                                    </span>
+                                    <span
+                                      className={`${darkMode ? DARK.bgCard : "bg-white"} border-2 ${c.border} ${c.text} rounded-lg py-[5px] px-2.5 text-[18px] font-black min-w-[50px] text-center`}
+                                    >
+                                      {row.weight || "—"}
+                                      {activeTab === "Cardio" ? "km" : ""}
+                                    </span>
+                                    <div className="flex gap-1 flex-1">
+                                      <button
+                                        onClick={() =>
+                                          updateRow(
+                                            eIdx,
+                                            rIdx,
+                                            "weight",
+                                            Math.max(
+                                              0,
+                                              (parseFloat(row.weight) || 0) - 1,
+                                            ).toString(),
+                                          )
+                                        }
+                                        className={`flex-1 ${c.bg} border ${c.border} ${c.text} rounded-lg py-[5px] text-[13px] font-bold cursor-pointer`}
+                                      >
+                                        −1
+                                      </button>
+                                      <button
+                                        onClick={() =>
+                                          updateRow(
+                                            eIdx,
+                                            rIdx,
+                                            "weight",
+                                            (
+                                              (parseFloat(row.weight) || 0) + 1
+                                            ).toString(),
+                                          )
+                                        }
+                                        className={`flex-1 ${c.bg} border ${c.border} ${c.text} rounded-lg py-[5px] text-[13px] font-bold cursor-pointer`}
+                                      >
+                                        +1
+                                      </button>
+                                      <button
+                                        onClick={() =>
+                                          updateRow(
+                                            eIdx,
+                                            rIdx,
+                                            "weight",
+                                            (
+                                              (parseFloat(row.weight) || 0) + 5
+                                            ).toString(),
+                                          )
+                                        }
+                                        className={`flex-1 ${c.bg} border ${c.border} ${c.text} rounded-lg py-[5px] text-[13px] font-bold cursor-pointer`}
+                                      >
+                                        +5
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  {/* Reps row */}
+                                  <div className="flex items-center gap-1.5">
+                                    <span
+                                      className={`text-[13px] font-semibold ${c.text} w-[52px]`}
+                                    >
+                                      {activeTab === "Cardio" ? "Time" : "Reps"}
+                                    </span>
+                                    <span
+                                      className={`${darkMode ? DARK.bgCard : "bg-white"} border-2 ${c.border} ${c.text} rounded-lg py-[5px] px-2.5 text-[18px] font-black min-w-[50px] text-center`}
+                                    >
+                                      {row.reps || "—"}
+                                      {activeTab === "Cardio" ? "m" : ""}
+                                    </span>
+                                    <div className="flex gap-1 flex-1">
+                                      <button
+                                        onClick={() =>
+                                          updateRow(
+                                            eIdx,
+                                            rIdx,
+                                            "reps",
+                                            Math.max(
+                                              0,
+                                              (parseFloat(row.reps) || 0) - 1,
+                                            ).toString(),
+                                          )
+                                        }
+                                        className={`flex-1 ${c.bg} border ${c.border} ${c.text} rounded-lg py-[5px] text-[13px] font-bold cursor-pointer`}
+                                      >
+                                        −1
+                                      </button>
+                                      <button
+                                        onClick={() =>
+                                          updateRow(
+                                            eIdx,
+                                            rIdx,
+                                            "reps",
+                                            (
+                                              (parseFloat(row.reps) || 0) + 1
+                                            ).toString(),
+                                          )
+                                        }
+                                        className={`flex-1 ${c.bg} border ${c.border} ${c.text} rounded-lg py-[5px] text-[13px] font-bold cursor-pointer`}
+                                      >
+                                        +1
+                                      </button>
+                                      <button
+                                        onClick={() =>
+                                          updateRow(
+                                            eIdx,
+                                            rIdx,
+                                            "reps",
+                                            (
+                                              (parseFloat(row.reps) || 0) + 5
+                                            ).toString(),
+                                          )
+                                        }
+                                        className={`flex-1 ${c.bg} border ${c.border} ${c.text} rounded-lg py-[5px] text-[13px] font-bold cursor-pointer`}
+                                      >
+                                        +5
+                                      </button>
+                                    </div>
+                                  </div>
+                                </>
+                              )}
+                            </div>
                           );
                         })}
 
@@ -1962,18 +2081,36 @@ export default function App() {
         {view === "history" && (
           <div data-name="Workout-History-View" className="animate-fade-in">
             {history.length > 0 && (
+              <>
+                <button
+                  type="button"
+                  onClick={installApp}
+                  className="w-full p-[13px] rounded-xl border-none text-white text-[15px] font-bold cursor-pointer transition-colors duration-300 bg-[#d86d6d] mb-2 hover:bg-[#c85c5c]"
+                >
+                  {isAppInstalled ? "App Installed" : "Install App"}
+                </button>
+                {installMessage && (
+                  <div
+                    className={`text-center text-xs mb-2 ${darkMode ? DARK.textMuted : "text-[#aaa]"}`}
+                  >
+                    {installMessage}
+                  </div>
+                )}
+              </>
+            )}
+            {history.length > 0 && (
               <button
                 onClick={downloadWorkoutData}
                 className="w-full p-[13px] rounded-xl border-none text-white text-[15px] font-bold cursor-pointer transition-colors duration-300 bg-[#98c9a3] mb-2 hover:bg-[#7bb88b]"
               >
-                📩 Download Data
+                Download Data
               </button>
             )}
             <button
               onClick={triggerFileUpload}
               className="w-full p-[13px] rounded-xl border-none text-white text-[15px] font-bold cursor-pointer transition-colors duration-300 bg-[#8ab4d9] mb-4 hover:bg-[#6a94b9]"
             >
-              ⬆️ Upload Data
+              Upload Data
             </button>
             <input
               ref={fileInputRef}
@@ -2010,7 +2147,31 @@ export default function App() {
               </div>
             ) : (
               <>
-                {history.map((session) => (
+                <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
+                  {historyMonthGroups.map((group) => (
+                    <button
+                      key={group.key}
+                      type="button"
+                      onClick={() => setSelectedHistoryMonth(group.key)}
+                      className={`shrink-0 rounded-xl px-4 py-2 text-[13px] font-bold transition-colors ${
+                        selectedHistoryMonth === group.key
+                          ? darkMode
+                            ? "bg-white text-black"
+                            : "bg-[#f0f0f0] text-[#333]"
+                          : darkMode
+                            ? `${DARK.bgTabInactive} ${DARK.textSecondary}`
+                            : "bg-[#e8e4e0] text-[#888]"
+                      }`}
+                    >
+                      {group.label}
+                      <span className="ml-1 font-semibold opacity-70">
+                        {group.sessions.length}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                {selectedHistorySessions.map((session) => (
                   <div
                     data-name="History-Session-Card"
                     key={session.id}
@@ -2325,7 +2486,7 @@ export default function App() {
                   entry.exercise === exerciseName,
               );
             return (
-              <div className="fixed inset-x-0 top-0 bottom-[76px] bg-black bg-opacity-50 flex items-end justify-center z-40 sm:items-center pointer-events-none">
+              <div className="fixed inset-x-0 top-0 bottom-[130px] bg-black bg-opacity-50 flex items-end justify-center z-40 sm:items-center pointer-events-none">
                 <div
                   className={`${darkMode ? DARK.bgCard : "bg-white"} rounded-t-3xl sm:rounded-2xl p-5 w-full sm:max-w-sm flex flex-col overflow-hidden pointer-events-auto`}
                   style={{ maxHeight: "calc(100dvh - 96px)" }}
@@ -2554,94 +2715,125 @@ export default function App() {
         )}
 
         {/* Fixed Bottom Bar */}
-        {view === "log" && !showLogoModal && (
+        {!showLogoModal && (
           <div
             className={`fixed bottom-0 left-0 right-0 z-[45] ${isBlocked ? "pointer-events-none" : ""} ${darkMode ? `${DARK.bgCard} ${DARK.borderCard}` : "bg-white border-[#E4E7EF]"} border-t`}
           >
             <div className="max-w-[680px] mx-auto px-3 pt-2 pb-6">
-              <div
-                data-name="Bottom-Exercise-Selector"
-                className={
-                  showExerciseSelectModal
-                    ? "hidden"
-                    : "mb-2 flex items-stretch"
-                }
-              >
-                <button
-                  type="button"
-                  onClick={saveSession}
-                  disabled={!hasWorkoutData}
-                  className={`min-w-0 overflow-hidden rounded-xl text-[14px] font-bold transition-all duration-300 ease-out ${
-                    hasSelectedExercise
-                      ? `mr-2 basis-1/2 px-3 py-3 opacity-100 translate-y-0 ${
-                          saved
-                            ? "bg-[#a8d8a8] text-white border border-[#a8d8a8]"
-                            : darkMode
-                              ? "bg-transparent text-[#f0f0f0] border border-[#333]"
-                              : "bg-white text-[#556579] border border-[#DCE1EA]"
-                        } ${
-                          hasWorkoutData
-                            ? "cursor-pointer"
-                            : "cursor-not-allowed opacity-60"
-                        }`
-                      : "mr-0 basis-0 px-0 py-3 opacity-0 -translate-y-1 pointer-events-none border border-transparent"
-                  }`}
-                  aria-hidden={!hasSelectedExercise}
-                  tabIndex={hasSelectedExercise ? 0 : -1}
-                >
-                  <span className="block truncate">
-                    {saved ? "Session saved" : "Finish workout"}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (canAddExercise) {
-                      // All exercises filled — add new slot and open modal for it
-                      const newIdx = activeEntries.length;
-                      addExercise();
-                      setTimeout(() => {
-                        setSelectingExerciseIdx(newIdx);
-                        setExerciseSearchQuery("");
-                        setShowExerciseSelectModal(true);
-                      }, 0);
-                    } else {
-                      // There's an empty slot — open modal for it
-                      setSelectingExerciseIdx(bottomExerciseIdx);
-                      setExerciseSearchQuery("");
-                      setShowExerciseSelectModal(true);
+              {view === "log" && (
+                <>
+                  <div
+                    data-name="Bottom-Exercise-Selector"
+                    className={
+                      showExerciseSelectModal
+                        ? "hidden"
+                        : "mb-2 flex items-stretch"
                     }
-                  }}
-                  className={`min-w-0 flex-1 py-3 rounded-xl border-none ${c.bg} ${c.text} text-[16px] font-bold cursor-pointer transition-all duration-300 ease-out flex items-center justify-center gap-2`}
-                >
-                  {hasSelectedExercise ? "+ Add Exercise" : "+ Add Workout"}
-                </button>
-              </div>
-
-              <div className="flex gap-1.5">
-                {TABS.map((tab) => {
-                  const tabC = COLORS[tab];
-                  const hasSelectedExercise = entries[tab]?.some(
-                    (entry) => entry.exercise,
-                  );
-                  return (
+                  >
                     <button
-                      key={tab}
-                      onClick={() => switchTab(tab)}
-                      className={`flex-1 py-2.5 px-1 rounded-xl border-2 cursor-pointer font-bold text-[13px] transition-all duration-200 ${
-                        activeTab === tab
-                          ? `${tabC.borderAccent} ${tabC.bg} ${tabC.text}`
-                          : hasSelectedExercise
-                            ? `${tabC.border} ${tabC.bg} ${tabC.text}`
-                            : darkMode
-                              ? `border-transparent ${DARK.bgTabInactive} ${DARK.textMuted}`
-                              : "border-transparent bg-[#ECEEF4] text-[#999]"
+                      type="button"
+                      onClick={saveSession}
+                      disabled={!hasWorkoutData}
+                      className={`min-w-0 overflow-hidden rounded-xl text-[14px] font-bold transition-all duration-300 ease-out ${
+                        hasSelectedExercise
+                          ? `mr-2 basis-1/2 px-3 py-3 opacity-100 translate-y-0 ${
+                              saved
+                                ? "bg-[#a8d8a8] text-white border border-[#a8d8a8]"
+                                : darkMode
+                                  ? "bg-[#102033] text-[#78A9FF] border border-[#27466f]"
+                                  : "bg-[#EAF2FF] text-[#4E7BBF] border border-[#BFD4F5]"
+                            } ${
+                              hasWorkoutData
+                                ? "cursor-pointer"
+                                : "cursor-not-allowed opacity-60"
+                            }`
+                          : "mr-0 basis-0 px-0 py-3 opacity-0 -translate-y-1 pointer-events-none border border-transparent"
                       }`}
+                      aria-hidden={!hasSelectedExercise}
+                      tabIndex={hasSelectedExercise ? 0 : -1}
                     >
-                      {tab}
+                      <span className="block truncate">
+                        {saved ? "Session saved" : "Finish workout"}
+                      </span>
                     </button>
-                  );
-                })}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (canAddExercise) {
+                          // All exercises filled — add new slot and open modal for it
+                          const newIdx = activeEntries.length;
+                          addExercise();
+                          setTimeout(() => {
+                            setSelectingExerciseIdx(newIdx);
+                            setExerciseSearchQuery("");
+                            setShowExerciseSelectModal(true);
+                          }, 0);
+                        } else {
+                          // There's an empty slot — open modal for it
+                          setSelectingExerciseIdx(bottomExerciseIdx);
+                          setExerciseSearchQuery("");
+                          setShowExerciseSelectModal(true);
+                        }
+                      }}
+                      className={`min-w-0 flex-1 py-3 rounded-xl border-none ${c.bg} ${c.text} text-[16px] font-bold cursor-pointer transition-all duration-300 ease-out flex items-center justify-center gap-2`}
+                    >
+                      {hasSelectedExercise ? "+ Add Exercise" : "+ Add Workout"}
+                    </button>
+                  </div>
+
+                  <div className="mb-2 flex gap-1.5">
+                    {TABS.map((tab) => {
+                      const tabC = COLORS[tab];
+                      const hasSelectedExercise = entries[tab]?.some(
+                        (entry) => entry.exercise,
+                      );
+                      return (
+                        <button
+                          key={tab}
+                          onClick={() => switchTab(tab)}
+                          className={`flex-1 py-2.5 px-1 rounded-xl border-2 cursor-pointer font-bold text-[13px] transition-all duration-200 ${
+                            activeTab === tab
+                              ? `${tabC.borderAccent} ${tabC.bg} ${tabC.text}`
+                              : hasSelectedExercise
+                                ? `${tabC.border} ${tabC.bg} ${tabC.text}`
+                                : darkMode
+                                  ? `border-transparent ${DARK.bgTabInactive} ${DARK.textMuted}`
+                                  : "border-transparent bg-[#ECEEF4] text-[#999]"
+                          }`}
+                        >
+                          {tab}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+
+              <div
+                data-name="View-Toggle-Navigation"
+                className={`flex p-[5px] rounded-[14px] gap-[2px] ${darkMode ? DARK.bgTab : "bg-[#e0dbd6]"}`}
+              >
+                {["log", "history", "stats"].map((v) => (
+                  <button
+                    key={v}
+                    onClick={() => setView(v)}
+                    className={`flex-1 py-[9px] rounded-[10px] border-none cursor-pointer text-[13px] font-semibold transition-all duration-200 ${
+                      view === v
+                        ? darkMode
+                          ? "bg-[#ffffff] text-[#000000]"
+                          : "bg-[#f0f0f0] text-[#333]"
+                        : darkMode
+                          ? `bg-transparent ${DARK.textSecondary}`
+                          : "bg-transparent text-[#888]"
+                    }`}
+                  >
+                    {v === "log"
+                      ? "Log"
+                      : v === "history"
+                        ? "History"
+                        : "Stats"}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
