@@ -702,7 +702,24 @@ export default function App() {
     }
 
     if (!installPrompt) {
-      setInstallMessage("Install will appear when available");
+      const userAgent = window.navigator.userAgent || "";
+      const platform = window.navigator.platform || "";
+      const isFirefox = /firefox|fxios/i.test(userAgent);
+      const isIOS =
+        /iphone|ipad|ipod/i.test(userAgent) ||
+        (platform === "MacIntel" && window.navigator.maxTouchPoints > 1);
+
+      if (isIOS) {
+        setInstallMessage("On iPhone/iPad, tap Share, then Add to Home Screen.");
+      } else if (isFirefox) {
+        setInstallMessage(
+          "Firefox does not support this install button. Open in Chrome or Edge to install.",
+        );
+      } else {
+        setInstallMessage(
+          "Install is not ready yet. Wait a few seconds, then try again.",
+        );
+      }
       return;
     }
 
@@ -2080,7 +2097,7 @@ export default function App() {
         {/* SECTION: History View */}
         {view === "history" && (
           <div data-name="Workout-History-View" className="animate-fade-in">
-            {history.length > 0 && (
+            {history.length > 0 && !isAppInstalled && (
               <>
                 <button
                   type="button"
