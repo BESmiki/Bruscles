@@ -82,8 +82,14 @@ const DARK = {
 };
 
 const TABS = ["Push", "Pull", "Legs", "Cardio"];
+const SITE_URL = "https://besmiki.github.io/Bruscles/";
+const SITE_QR_URL = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=12&data=${encodeURIComponent(SITE_URL)}`;
 
-const emptySet = () => ({ weight: "", reps: "", complete: false });
+const createSetId = () =>
+  globalThis.crypto?.randomUUID?.() ||
+  `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+const withSetId = (row) => ({ ...row, _id: row?._id || createSetId() });
+const emptySet = () => ({ _id: createSetId(), weight: "", reps: "", complete: false });
 const emptyEntry = () => ({ exercise: "", rows: [emptySet()] });
 const isFilledSet = (row) =>
   (parseFloat(row?.weight) || 0) > 0 || (parseFloat(row?.reps) || 0) > 0;
@@ -164,6 +170,114 @@ function formatStrengthSet(row) {
   return `${weight} x ${reps}`;
 }
 
+function getBestSet(rows, category) {
+  return rows.reduce((b, r) => {
+    const bWeight = parseFloat(b.weight) || 0;
+    const rWeight = parseFloat(r.weight) || 0;
+    if (rWeight !== bWeight) return rWeight > bWeight ? r : b;
+
+    const bReps = parseFloat(b.reps) || 0;
+    const rReps = parseFloat(r.reps) || 0;
+    if (category === "Cardio") {
+      if (bReps === 0) return rReps > 0 ? r : b;
+      if (rReps === 0) return b;
+      return rReps < bReps ? r : b;
+    }
+
+    return rReps > bReps ? r : b;
+  }, rows[0]);
+}
+
+function compareBestSets(next, previous, category) {
+  if (!next) return 0;
+  if (!previous) return 1;
+
+  const nextWeight = parseFloat(next.weight) || 0;
+  const previousWeight = parseFloat(previous.weight) || 0;
+  if (nextWeight !== previousWeight) return nextWeight - previousWeight;
+
+  const nextReps = parseFloat(next.reps) || 0;
+  const previousReps = parseFloat(previous.reps) || 0;
+  if (category === "Cardio") {
+    if (previousReps === 0 && nextReps > 0) return 1;
+    if (nextReps === 0 && previousReps > 0) return -1;
+    return previousReps - nextReps;
+  }
+
+  return nextReps - previousReps;
+}
+
+function getHistoricalBestStats(history, exercise) {
+  let historicalBest = null;
+
+  for (const session of history) {
+    for (const tab of TABS) {
+      const exs = session.data[tab] || [];
+      for (const ex of exs) {
+        if (ex.exercise !== exercise) continue;
+
+        const rows = ex.rows?.filter(isFilledSet) || [];
+        if (rows.length === 0) continue;
+
+        const best = getBestSet(rows, tab);
+        if (
+          !historicalBest ||
+          compareBestSets(best, historicalBest.best, tab) > 0
+        ) {
+          historicalBest = { date: session.date, category: tab, best };
+        }
+      }
+    }
+  }
+
+  return historicalBest;
+}
+
+function getSessionBestSets(sessionData, previousHistory) {
+  const sessionBestByExercise = new Map();
+
+  for (const tab of TABS) {
+    const sessionExercises = sessionData[tab] || [];
+
+    for (const ex of sessionExercises) {
+      const rows = ex.rows?.filter(isFilledSet) || [];
+      if (!ex.exercise || rows.length === 0) continue;
+
+      const sessionBest = getBestSet(rows, tab);
+      const currentBest = sessionBestByExercise.get(ex.exercise);
+
+      if (
+        !currentBest ||
+        compareBestSets(sessionBest, currentBest.best, tab) > 0
+      ) {
+        sessionBestByExercise.set(ex.exercise, {
+          exercise: ex.exercise,
+          category: tab,
+          best: sessionBest,
+        });
+      }
+    }
+  }
+
+  return [...sessionBestByExercise.values()]
+    .map((item) => {
+      const previous = getHistoricalBestStats(previousHistory, item.exercise);
+      return {
+        ...item,
+        previous: previous?.best,
+        isFirstBest: !previous,
+      };
+    })
+    .filter(
+      (item) => compareBestSets(item.best, item.previous, item.category) > 0,
+    )
+    .sort((a, b) => {
+      const categorySort = TABS.indexOf(a.category) - TABS.indexOf(b.category);
+      if (categorySort !== 0) return categorySort;
+      return a.exercise.localeCompare(b.exercise);
+    });
+}
+
 function getLastStats(history, exercise) {
   for (const session of history) {
     for (const tab of TABS) {
@@ -172,13 +286,8 @@ function getLastStats(history, exercise) {
       if (match && match.rows?.some(isFilledSet)) {
         const rows = match.rows
           .filter(isFilledSet)
-          .map((row) => ({ ...row, complete: false }));
-        const best = rows.reduce((b, r) => {
-          const bWeight = parseFloat(b.weight) || 0;
-          const rWeight = parseFloat(r.weight) || 0;
-          if (rWeight !== bWeight) return rWeight > bWeight ? r : b;
-          return (parseFloat(r.reps) || 0) > (parseFloat(b.reps) || 0) ? r : b;
-        }, rows[0]);
+          .map((row) => withSetId({ ...row, complete: false }));
+        const best = getBestSet(rows, tab);
         return { date: session.date, rows, best };
       }
     }
@@ -421,9 +530,14 @@ function StatsView({ history, darkMode }) {
     );
 
   const counts = { Push: 0, Pull: 0, Legs: 0, Cardio: 0 };
-  for (const session of history)
-    for (const tab of TABS)
-      if ((session.data[tab] || []).some((e) => e.exercise)) counts[tab]++;
+  for (const session of history) {
+    for (const tab of TABS) {
+      const exs = session.data[tab] || [];
+      for (const ex of exs) {
+        counts[tab] += ex.rows?.filter(isFilledSet).length || 0;
+      }
+    }
+  }
 
   const total = Object.values(counts).reduce((a, b) => a + b, 0) || 1;
 
@@ -455,15 +569,16 @@ function StatsView({ history, darkMode }) {
     }
   }
 
-  const mostFrequent = Object.entries(exerciseStats).sort(
-    (a, b) => b[1].count - a[1].count,
-  )[0];
+  const mostFrequent = Object.entries(exerciseStats)
+    .sort((a, b) => b[1].count - a[1].count)
+    .slice(0, 2);
   const mostWeight = Object.entries(exerciseStats)
     .filter(([_, stats]) => stats.category !== "Cardio")
-    .sort((a, b) => b[1].totalWeight - a[1].totalWeight)[0];
-  const mostSets = Object.entries(exerciseStats).sort(
-    (a, b) => b[1].totalSets - a[1].totalSets,
-  )[0];
+    .sort((a, b) => b[1].totalWeight - a[1].totalWeight)
+    .slice(0, 2);
+  const mostSets = Object.entries(exerciseStats)
+    .sort((a, b) => b[1].totalSets - a[1].totalSets)
+    .slice(0, 2);
 
   const allNonCardio = Object.entries(exerciseStats)
     .filter(([_, stats]) => stats.category !== "Cardio")
@@ -535,7 +650,7 @@ function StatsView({ history, darkMode }) {
               <span className="font-bold text-[#aaa] text-sm">
                 {pct}%{" "}
                 <span className="font-normal text-xs">
-                  ({counts[tab]} session{counts[tab] !== 1 ? "s" : ""})
+                  ({counts[tab]} set{counts[tab] !== 1 ? "s" : ""})
                 </span>
               </span>
             </div>
@@ -549,13 +664,15 @@ function StatsView({ history, darkMode }) {
         );
       })}
 
-      {(mostFrequent || mostWeight || mostSets) && (
+      {(mostFrequent.length > 0 ||
+        mostWeight.length > 0 ||
+        mostSets.length > 0) && (
         <div className="mt-8 pt-6 border-t border-[#e0dbd6]">
           <h3 className="text-center text-[#888] text-base font-bold mb-5">
             Exercise Highlights
           </h3>
           <div className="flex flex-col gap-4">
-            {mostFrequent && (
+            {mostFrequent.length > 0 && (
               <div
                 className={`${darkMode ? `${DARK.bgCard} ${DARK.borderCard}` : "bg-[#f5f5f5] border-[#e0dbd6]"} rounded-xl p-4 border`}
               >
@@ -564,17 +681,33 @@ function StatsView({ history, darkMode }) {
                 >
                   🔥 Fav Exercise
                 </div>
-                <div
-                  className={`text-lg font-bold ${darkMode ? DARK.text : "text-[#555]"}`}
-                >
-                  {mostFrequent[0]}
-                </div>
-                <div className="text-sm text-[#999] mt-1">
-                  {mostFrequent[1].count} Sessions
+                <div className="flex flex-col gap-3">
+                  {mostFrequent.map(([exerciseName, stats], index) => (
+                    <div
+                      key={exerciseName}
+                      className={`${index > 0 ? `border-t pt-3 ${darkMode ? DARK.borderCard : "border-[#e0dbd6]"}` : ""}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`text-[11px] font-black ${index === 0 ? "text-[#d49b46]" : darkMode ? DARK.textMuted : "text-[#aaa]"}`}
+                        >
+                          #{index + 1}
+                        </span>
+                        <div
+                          className={`text-lg font-bold ${darkMode ? DARK.text : "text-[#555]"}`}
+                        >
+                          {exerciseName}
+                        </div>
+                      </div>
+                      <div className="text-sm text-[#999] mt-1">
+                        {stats.count} Sessions
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
-            {mostWeight && (
+            {mostWeight.length > 0 && (
               <div
                 className={`${darkMode ? `${DARK.bgCard} ${DARK.borderCard}` : "bg-[#f5f5f5] border-[#e0dbd6]"} rounded-xl p-4 border`}
               >
@@ -583,17 +716,33 @@ function StatsView({ history, darkMode }) {
                 >
                   💪 Most Total Weight Moved
                 </div>
-                <div
-                  className={`text-lg font-bold ${darkMode ? DARK.text : "text-[#555]"}`}
-                >
-                  {mostWeight[0]}
-                </div>
-                <div className="text-sm text-[#999] mt-1">
-                  {mostWeight[1].totalWeight.toFixed(0)} kg
+                <div className="flex flex-col gap-3">
+                  {mostWeight.map(([exerciseName, stats], index) => (
+                    <div
+                      key={exerciseName}
+                      className={`${index > 0 ? `border-t pt-3 ${darkMode ? DARK.borderCard : "border-[#e0dbd6]"}` : ""}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`text-[11px] font-black ${index === 0 ? "text-[#d49b46]" : darkMode ? DARK.textMuted : "text-[#aaa]"}`}
+                        >
+                          #{index + 1}
+                        </span>
+                        <div
+                          className={`text-lg font-bold ${darkMode ? DARK.text : "text-[#555]"}`}
+                        >
+                          {exerciseName}
+                        </div>
+                      </div>
+                      <div className="text-sm text-[#999] mt-1">
+                        {stats.totalWeight.toFixed(0)} kg
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
-            {mostSets && (
+            {mostSets.length > 0 && (
               <div
                 className={`${darkMode ? `${DARK.bgCard} ${DARK.borderCard}` : "bg-[#f5f5f5] border-[#e0dbd6]"} rounded-xl p-4 border`}
               >
@@ -602,16 +751,48 @@ function StatsView({ history, darkMode }) {
                 >
                   🎯 Most Sets
                 </div>
-                <div
-                  className={`text-lg font-bold ${darkMode ? DARK.text : "text-[#555]"}`}
-                >
-                  {mostSets[0]}
-                </div>
-                <div className="text-sm text-[#999] mt-1">
-                  {mostSets[1].totalSets} Sets
+                <div className="flex flex-col gap-3">
+                  {mostSets.map(([exerciseName, stats], index) => (
+                    <div
+                      key={exerciseName}
+                      className={`${index > 0 ? `border-t pt-3 ${darkMode ? DARK.borderCard : "border-[#e0dbd6]"}` : ""}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`text-[11px] font-black ${index === 0 ? "text-[#d49b46]" : darkMode ? DARK.textMuted : "text-[#aaa]"}`}
+                        >
+                          #{index + 1}
+                        </span>
+                        <div
+                          className={`text-lg font-bold ${darkMode ? DARK.text : "text-[#555]"}`}
+                        >
+                          {exerciseName}
+                        </div>
+                      </div>
+                      <div className="text-sm text-[#999] mt-1">
+                        {stats.totalSets} Sets
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
+            <div
+              className={`mx-auto mt-2 flex w-fit flex-col items-center rounded-2xl border p-4 ${darkMode ? `${DARK.bgCard} ${DARK.borderCard}` : "bg-white border-[#e0dbd6]"}`}
+            >
+              <a href={SITE_URL} target="_blank" rel="noreferrer">
+                <img
+                  src={SITE_QR_URL}
+                  alt="QR code for Bruscles"
+                  className="h-[180px] w-[180px] rounded-xl"
+                />
+              </a>
+              <div
+                className={`mt-3 text-center text-[12px] font-bold ${darkMode ? DARK.textMuted : "text-[#999]"}`}
+              >
+                Scan to share TAji Tracker
+              </div>
+            </div>
             <h2
               className={`text-large text-center m-4 ${darkMode ? "text-green-400" : "text-green-700"}`}
             >
@@ -620,6 +801,127 @@ function StatsView({ history, darkMode }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function SessionBestSetsOverlay({ bestSets, darkMode, onClose }) {
+  const hasBestSets = bestSets.length > 0;
+
+  return (
+    <div
+      className={`fixed inset-0 z-[80] overflow-y-auto ${hasBestSets ? "record-gold-flash" : ""} ${darkMode ? "bg-black text-white" : "bg-[#fffaf6] text-[#333]"}`}
+      style={
+        hasBestSets
+          ? { "--record-base-bg": darkMode ? "#000000" : "#fffaf6" }
+          : undefined
+      }
+    >
+      <div className="min-h-screen max-w-[680px] mx-auto px-5 pt-10 pb-8 flex flex-col">
+        <div className="flex-1">
+          <div
+            className={`text-[12px] font-black uppercase tracking-[0.8px] mb-3 ${darkMode ? DARK.textMuted : "text-[#b58a8a]"}`}
+          >
+            Session stats
+          </div>
+          <h1
+            className={`text-[34px] leading-tight font-black mb-3 ${darkMode ? DARK.text : "text-[#4b3f3f]"}`}
+          >
+            {hasBestSets ? "New best sets" : "Workout saved"}
+          </h1>
+          <p
+            className={`text-[15px] leading-relaxed mb-8 ${darkMode ? DARK.textSecondary : "text-[#9a7777]"}`}
+          >
+            {hasBestSets
+              ? `${bestSets.length} new best ${bestSets.length === 1 ? "set" : "sets"} from this workout.`
+              : "No new best sets this time. Still banked the session."}
+          </p>
+
+          {hasBestSets ? (
+            <div className="flex flex-col gap-3">
+              {bestSets.map((item, index) => {
+                const col = COLORS[item.category];
+                return (
+                  <div
+                    key={`${item.category}-${item.exercise}`}
+                    className={`record-card-fade rounded-2xl border p-4 ${darkMode ? `${DARK.bgCard} ${DARK.borderCard}` : "bg-white border-[#ead9d2]"}`}
+                    style={{ animationDelay: `${index * 120}ms` }}
+                  >
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <div className="min-w-0">
+                        <div
+                          className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-black ${col.bg} ${col.text}`}
+                        >
+                          {item.category}
+                        </div>
+                        <div
+                          className={`mt-2 text-[18px] font-black leading-snug ${darkMode ? DARK.text : "text-[#3d3737]"}`}
+                        >
+                          {item.exercise}
+                        </div>
+                      </div>
+                      <div
+                        className={`shrink-0 rounded-full px-3 py-1 text-[12px] font-black ${item.isFirstBest ? "bg-[#e8efe6] text-[#6f8a68]" : "bg-[#F3E4E4] text-[#C98C8C]"}`}
+                      >
+                        {item.isFirstBest ? "First best" : "New best"}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div
+                        className={`rounded-xl p-3 ${darkMode ? DARK.bgInput : "bg-[#f7f0ec]"}`}
+                      >
+                        <div
+                          className={`text-[11px] font-bold uppercase mb-1 ${darkMode ? DARK.textMuted : "text-[#b5a09a]"}`}
+                        >
+                          New
+                        </div>
+                        <div className={`text-[16px] font-black ${col.text}`}>
+                          {item.category === "Cardio"
+                            ? formatCardioSet(item.best)
+                            : formatStrengthSet(item.best)}
+                        </div>
+                      </div>
+                      <div
+                        className={`rounded-xl p-3 ${darkMode ? DARK.bgInput : "bg-[#f7f0ec]"}`}
+                      >
+                        <div
+                          className={`text-[11px] font-bold uppercase mb-1 ${darkMode ? DARK.textMuted : "text-[#b5a09a]"}`}
+                        >
+                          Previous
+                        </div>
+                        <div
+                          className={`text-[16px] font-black ${darkMode ? DARK.textSecondary : "text-[#8f7f7a]"}`}
+                        >
+                          {item.previous
+                            ? item.category === "Cardio"
+                              ? formatCardioSet(item.previous)
+                              : formatStrengthSet(item.previous)
+                            : "None"}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div
+              className={`rounded-2xl border p-5 text-center ${darkMode ? `${DARK.bgCard} ${DARK.borderCard} ${DARK.textSecondary}` : "bg-white border-[#ead9d2] text-[#9a7777]"}`}
+            >
+              Your history is updated and ready for the next one.
+            </div>
+          )}
+        </div>
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="mt-8 w-full rounded-2xl bg-[#e87878] py-4 text-[16px] font-black text-white"
+        >
+          Back to training
+        </button>
+      </div>
     </div>
   );
 }
@@ -636,7 +938,13 @@ export default function App() {
   const [history, setHistory] = useState([]);
   const [saved, setSaved] = useState(false);
   const [elapsed, setElapsed] = useState(0);
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => {
+    try {
+      return localStorage.getItem("dark_mode") === "true";
+    } catch {
+      return false;
+    }
+  });
   const [startTime, setStartTime] = useState(Date.now());
   const [showFullscreenStopwatch, setShowFullscreenStopwatch] = useState(false);
   const [isSticky, setIsSticky] = useState(false);
@@ -671,6 +979,9 @@ export default function App() {
   const [isAppInstalled, setIsAppInstalled] = useState(false);
   const [installMessage, setInstallMessage] = useState("");
   const [selectedHistoryMonth, setSelectedHistoryMonth] = useState("");
+  const [showHistoryMonthModal, setShowHistoryMonthModal] = useState(false);
+  const [sessionBestSets, setSessionBestSets] = useState([]);
+  const [showSessionStats, setShowSessionStats] = useState(false);
 
   const toggleSession = (id) =>
     setExpandedSessions((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -788,6 +1099,12 @@ export default function App() {
       window.removeEventListener("appinstalled", handleAppInstalled);
     };
   }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("dark_mode", String(darkMode));
+    } catch {}
+  }, [darkMode]);
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -998,6 +1315,7 @@ export default function App() {
       const rows = tab[eIdx].rows;
       const prev2 = rows[rows.length - 1];
       const newSet = {
+        _id: createSetId(),
         weight: prev2?.weight || "",
         reps: prev2?.reps ? String(parseInt(prev2.reps) + 1) : "",
         complete: false,
@@ -1017,11 +1335,12 @@ export default function App() {
     });
   };
 
-  const removeSet = (eIdx, rIdx) => {
+  const removeSet = (eIdx, setId) => {
     setEntries((prev) => {
       const tab = [...prev[activeTab]];
-      if (tab[eIdx].rows[rIdx]?.complete) return prev;
-      const rows = tab[eIdx].rows.filter((_, i) => i !== rIdx);
+      const rowToRemove = tab[eIdx].rows.find((row) => row._id === setId);
+      if (rowToRemove?.complete) return prev;
+      const rows = tab[eIdx].rows.filter((row) => row._id !== setId);
       if (rows.length === 0) {
         const updatedTab = tab.filter((_, i) => i !== eIdx);
         return {
@@ -1047,16 +1366,16 @@ export default function App() {
     });
   };
 
-  const requestRemoveSet = (eIdx, rIdx) => {
-    const key = `${activeTab}-${eIdx}-${rIdx}`;
-    if (deletingSets[key]) return;
+  const requestRemoveSet = (eIdx, row) => {
+    const setId = row._id;
+    if (deletingSets[setId]) return;
 
-    setDeletingSets((prev) => ({ ...prev, [key]: true }));
+    setDeletingSets((prev) => ({ ...prev, [setId]: true }));
     window.setTimeout(() => {
-      removeSet(eIdx, rIdx);
+      removeSet(eIdx, setId);
       setDeletingSets((prev) => {
         const next = { ...prev };
-        delete next[key];
+        delete next[setId];
         return next;
       });
     }, 340);
@@ -1108,7 +1427,7 @@ export default function App() {
             ...e,
             rows: e.rows
               .filter(isFilledSet)
-              .map((row) => ({ ...row, complete: false })),
+              .map(({ _id, ...row }) => ({ ...row, complete: false })),
           }))
           .filter((e) => e.rows.length > 0),
       ]),
@@ -1120,6 +1439,7 @@ export default function App() {
       date: new Date().toISOString(),
       data,
     };
+    const newBestSets = getSessionBestSets(data, history);
     const updated = [session, ...history];
     setHistory(updated);
     try {
@@ -1130,6 +1450,8 @@ export default function App() {
     localStorage.setItem("total_session_time", "0");
     localStorage.setItem("last_seen_timestamp", String(Date.now()));
     setSaved(true);
+    setSessionBestSets(newBestSets);
+    setShowSessionStats(true);
     setEntries((prev) =>
       Object.fromEntries(
         Object.entries(prev).map(([tab, exercises]) => [
@@ -1256,7 +1578,7 @@ export default function App() {
 
   const triggerFileUpload = () => fileInputRef.current?.click();
 
-  const version = new Date();
+  const version = new Date(import.meta.env.VITE_COMMIT_DATE);
   const day = version.getDate();
   const month = version.getMonth() + 1;
   const activeEntries = entries[activeTab] || [];
@@ -1305,6 +1627,12 @@ export default function App() {
       ?.sessions ||
     historyMonthGroups[0]?.sessions ||
     [];
+  const selectedHistoryMonthGroup =
+    historyMonthGroups.find((group) => group.key === selectedHistoryMonth) ||
+    historyMonthGroups[0];
+  const previousHistoryMonthGroups = historyMonthGroups.filter(
+    (group) => group.key !== selectedHistoryMonthGroup?.key,
+  );
   const currentUnlockedSet = (() => {
     for (let eIdx = 0; eIdx < activeEntries.length; eIdx++) {
       const entry = activeEntries[eIdx];
@@ -1650,16 +1978,6 @@ export default function App() {
                       >
                         Delete
                       </button>
-                      {entries[activeTab].filter((e) => e.exercise).length >
-                        1 &&
-                        !entry.rows?.some((row) => row.complete) && (
-                          <button
-                            onClick={() => removeExercise(eIdx)}
-                            className={`h-8 w-8 rounded-full border-none cursor-pointer text-[15px] ${darkMode ? `${DARK.bgTabInactive} ${DARK.textMuted}` : "bg-[#f6eeee] text-[#b77b7b]"}`}
-                          >
-                            ✕
-                          </button>
-                        )}
                     </div>
 
                     {/* Previous Session Stats */}
@@ -1721,16 +2039,18 @@ export default function App() {
                       >
                         {entry.rows.map((row, rIdx) => {
                           const setComplete = Boolean(row.complete);
-                          const deletingSet = Boolean(
-                            deletingSets[`${activeTab}-${eIdx}-${rIdx}`],
-                          );
+                          const deletingSet = Boolean(deletingSets[row._id]);
                           return (
                             <div
-                              data-name="Single-Set-Row"
-                              key={rIdx}
-                              className={`${darkMode ? DARK.bgInput : setComplete ? "bg-[#f9f4f4]" : "bg-[#fffdfc]"} border ${setComplete ? "border-[#e7dada]" : "border-[#efe6e6]"} rounded-2xl px-3 py-3 max-h-[260px] animate-fade-in transition-all duration-300 ${deletingSet ? "animate-set-delete pointer-events-none" : ""}`}
+                              key={row._id}
+                              className={`set-row-shell animate-fade-in ${deletingSet ? "set-row-shell-delete pointer-events-none" : ""}`}
                             >
-                              <div className="mb-3 flex items-center justify-between">
+                              <div className="set-row-inner">
+                                <div
+                                  data-name="Single-Set-Row"
+                                  className={`${darkMode ? DARK.bgInput : setComplete ? "bg-[#f9f4f4]" : "bg-[#fffdfc]"} border ${setComplete ? "border-[#e7dada]" : "border-[#efe6e6]"} rounded-2xl px-3 py-3 transition-all duration-300 ${deletingSet ? "set-row-card-delete" : ""}`}
+                                >
+                                  <div className="mb-3 flex items-center justify-between">
                                 <span
                                   className={`text-[12px] font-black uppercase tracking-[0.6px] ${setComplete ? "text-[#39a852]" : c.text}`}
                                 >
@@ -1906,7 +2226,7 @@ export default function App() {
                                 <div className="flex w-[82px] shrink-0 flex-col gap-2">
                                   <button
                                     type="button"
-                                    onClick={() => requestRemoveSet(eIdx, rIdx)}
+                                    onClick={() => requestRemoveSet(eIdx, row)}
                                     disabled={setComplete || deletingSet}
                                     className={`${
                                       setComplete
@@ -2072,6 +2392,8 @@ export default function App() {
                                 </>
                               )}
                             </div>
+                          </div>
+                        </div>
                           );
                         })}
 
@@ -2097,12 +2419,28 @@ export default function App() {
         {/* SECTION: History View */}
         {view === "history" && (
           <div data-name="Workout-History-View" className="animate-fade-in">
+            <div
+              className={`text-center text-sm mb-1 ${darkMode ? DARK.textMuted : "text-[#aaa]"}`}
+            >
+               {formatDate(new Date())}
+            </div>
+            <div
+              className={`text-center text-sm mb-4 tabular-nums ${darkMode ? DARK.textMuted : "text-[#aaa]"}`}
+            >
+              Current session:{" "}
+              {String(Math.floor(totalSessionTime / 3600)).padStart(2, "0")}:
+              {String(Math.floor((totalSessionTime % 3600) / 60)).padStart(
+                2,
+                "0",
+              )}
+              :{String(totalSessionTime % 60).padStart(2, "0")}
+            </div>
             {history.length > 0 && !isAppInstalled && (
               <>
                 <button
                   type="button"
                   onClick={installApp}
-                  className="w-full p-[13px] rounded-xl border-none text-white text-[15px] font-bold cursor-pointer transition-colors duration-300 bg-[#d86d6d] mb-2 hover:bg-[#c85c5c]"
+                  className="mx-auto block w-[60%] p-[13px] rounded-xl border-none text-white text-[15px] font-bold cursor-pointer transition-colors duration-300 bg-[#c98c8c] mb-2 hover:bg-[#c85c5c]"
                 >
                   {isAppInstalled ? "App Installed" : "Install App"}
                 </button>
@@ -2118,14 +2456,14 @@ export default function App() {
             {history.length > 0 && (
               <button
                 onClick={downloadWorkoutData}
-                className="w-full p-[13px] rounded-xl border-none text-white text-[15px] font-bold cursor-pointer transition-colors duration-300 bg-[#98c9a3] mb-2 hover:bg-[#7bb88b]"
+                className="mx-auto block w-[60%] p-[13px] rounded-xl border-none text-white text-[15px] font-bold cursor-pointer transition-colors duration-300 bg-[#8fa58a] mb-2 hover:bg-[#7bb88b]"
               >
                 Download Data
               </button>
             )}
             <button
               onClick={triggerFileUpload}
-              className="w-full p-[13px] rounded-xl border-none text-white text-[15px] font-bold cursor-pointer transition-colors duration-300 bg-[#8ab4d9] mb-4 hover:bg-[#6a94b9]"
+              className="mx-auto block w-[60%] p-[13px] rounded-xl border-none text-white text-[15px] font-bold cursor-pointer transition-colors duration-300 bg-[#7e90a8] mb-4 hover:bg-[#6a94b9]"
             >
               Upload Data
             </button>
@@ -2136,22 +2474,11 @@ export default function App() {
               onChange={uploadWorkoutData}
               className="hidden"
             />
-            <div
-              className={`text-center text-sm mb-1 ${darkMode ? DARK.textMuted : "text-[#aaa]"}`}
+            <h2
+              className={`mb-4 text-center text-[17px] font-black ${darkMode ? DARK.text : "text-[#555]"}`}
             >
-              📅 {formatDate(new Date())}
-            </div>
-            <div
-              className={`text-center text-sm mb-4 tabular-nums ${darkMode ? DARK.textMuted : "text-[#aaa]"}`}
-            >
-              ⏱ Current session:{" "}
-              {String(Math.floor(totalSessionTime / 3600)).padStart(2, "0")}:
-              {String(Math.floor((totalSessionTime % 3600) / 60)).padStart(
-                2,
-                "0",
-              )}
-              :{String(totalSessionTime % 60).padStart(2, "0")}
-            </div>
+              Workout history
+            </h2>
             {history.length === 0 ? (
               <div
                 className={`text-center mt-[60px] text-[15px] ${darkMode ? DARK.textMuted : "text-[#bbb]"}`}
@@ -2164,28 +2491,35 @@ export default function App() {
               </div>
             ) : (
               <>
-                <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
-                  {historyMonthGroups.map((group) => (
+                <div className="mb-5 flex items-center justify-center gap-3">
+                  {selectedHistoryMonthGroup && (
                     <button
-                      key={group.key}
                       type="button"
-                      onClick={() => setSelectedHistoryMonth(group.key)}
-                      className={`shrink-0 rounded-xl px-4 py-2 text-[13px] font-bold transition-colors ${
-                        selectedHistoryMonth === group.key
-                          ? darkMode
-                            ? "bg-white text-black"
-                            : "bg-[#f0f0f0] text-[#333]"
-                          : darkMode
-                            ? `${DARK.bgTabInactive} ${DARK.textSecondary}`
-                            : "bg-[#e8e4e0] text-[#888]"
-                      }`}
+                      onClick={() =>
+                        setSelectedHistoryMonth(selectedHistoryMonthGroup.key)
+                      }
+                      className={`min-h-[48px] w-[156px] shrink-0 rounded-xl px-4 py-2 text-[15px] font-black transition-colors ${darkMode ? "bg-white text-black" : "bg-[#f0f0f0] text-[#111]"}`}
                     >
-                      {group.label}
+                      {selectedHistoryMonthGroup.label}
                       <span className="ml-1 font-semibold opacity-70">
-                        {group.sessions.length}
+                        {selectedHistoryMonthGroup.sessions.length}
                       </span>
                     </button>
-                  ))}
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setShowHistoryMonthModal(true)}
+                    disabled={previousHistoryMonthGroups.length === 0}
+                    className={`min-h-[48px] w-[172px] shrink-0 rounded-xl px-4 py-2 text-[13px] font-black transition-colors ${
+                      previousHistoryMonthGroups.length === 0
+                        ? darkMode
+                          ? `${DARK.bgTabInactive} text-[#555] cursor-not-allowed`
+                          : "bg-[#eee8e2] text-[#b8ada5] cursor-not-allowed"
+                        : "bg-[#f9cbb1] text-black cursor-pointer"
+                    }`}
+                  >
+                    change month
+                  </button>
                 </div>
 
                 {selectedHistorySessions.map((session) => (
@@ -2731,8 +3065,62 @@ export default function App() {
           </div>
         )}
 
+        {showSessionStats && (
+          <SessionBestSetsOverlay
+            bestSets={sessionBestSets}
+            darkMode={darkMode}
+            onClose={() => setShowSessionStats(false)}
+          />
+        )}
+
+        {showHistoryMonthModal && (
+          <div
+            className="fixed inset-0 z-[70] flex items-end justify-center bg-black bg-opacity-50 p-0"
+            onClick={() => setShowHistoryMonthModal(false)}
+          >
+            <div
+              className={`w-full max-w-[680px] rounded-t-3xl p-5 ${darkMode ? `${DARK.bgCard} ${DARK.text}` : "bg-white text-[#222]"}`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-[#e0dbd6]" />
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h2 className="text-[18px] font-black">Months with data</h2>
+                <button
+                  type="button"
+                  onClick={() => setShowHistoryMonthModal(false)}
+                  className={`h-9 w-9 rounded-full text-[18px] font-bold ${darkMode ? `${DARK.bgTabInactive} ${DARK.textSecondary}` : "bg-[#f6eeee] text-[#b77b7b]"}`}
+                  aria-label="Close month picker"
+                >
+                  x
+                </button>
+              </div>
+              <div className="flex max-h-[55vh] flex-col gap-2 overflow-y-auto pb-2">
+                {previousHistoryMonthGroups.map((group) => (
+                  <button
+                    key={group.key}
+                    type="button"
+                    onClick={() => {
+                      setSelectedHistoryMonth(group.key);
+                      setShowHistoryMonthModal(false);
+                    }}
+                    className={`flex items-center justify-between rounded-2xl px-4 py-4 text-left text-[15px] font-black transition-colors ${darkMode ? `${DARK.bgCardAlt} ${DARK.text}` : "bg-[#f7f3ef] text-[#333]"}`}
+                  >
+                    <span>{group.label}</span>
+                    <span
+                      className={`rounded-full px-2.5 py-1 text-[12px] ${darkMode ? `${DARK.bgTabInactive} ${DARK.textMuted}` : "bg-white text-[#9a8c86]"}`}
+                    >
+                      {group.sessions.length}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Fixed Bottom Bar */}
         {!showLogoModal && (
+          
           <div
             className={`fixed bottom-0 left-0 right-0 z-[45] ${isBlocked ? "pointer-events-none" : ""} ${darkMode ? `${DARK.bgCard} ${DARK.borderCard}` : "bg-white border-[#E4E7EF]"} border-t`}
           >
