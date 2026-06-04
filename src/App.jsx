@@ -63,6 +63,87 @@ const COLORS = {
   },
 };
 
+// color theme 2
+// const COLORS = {
+//   Push: {
+//     // A sophisticated, energetic coral/crimson vibe
+//     bg: "bg-[#FFF5F5]",
+//     border: "border-[#FEE2E2]",
+//     borderAccent: "border-[#F87171]",
+//     text: "text-[#EF4444]",
+//     fill: "bg-[#EF4444]",
+//     light: "bg-[#FEF2F2]",
+//   },
+//   Pull: {
+//     // A tech-forward, deep electric/slate blue
+//     bg: "bg-[#F0F7FF]",
+//     border: "border-[#E0F2FE]",
+//     borderAccent: "border-[#38BDF8]",
+//     text: "text-[#0EA5E9]",
+//     fill: "bg-[#0EA5E9]",
+//     light: "bg-[#F0F9FF]",
+//   },
+//   Legs: {
+//     // A fresh, botanical emerald green signifying strength and growth
+//     bg: "bg-[#F0FDF4]",
+//     border: "border-[#DCFCE7]",
+//     borderAccent: "border-[#4ADE80]",
+//     text: "text-[#10B981]",
+//     fill: "bg-[#10B981]",
+//     light: "bg-[#F0FDF4]",
+//   },
+//   Cardio: {
+//     // An active, high-visibility sunset orange/amber
+//     bg: "bg-[#FFFBEB]",
+//     border: "border-[#FEF3C7]",
+//     borderAccent: "border-[#FBBF24]",
+//     text: "text-[#F59E0B]",
+//     fill: "bg-[#F59E0B]",
+//     light: "bg-[#FFFDF5]",
+//   },
+// };
+
+//alt dark mode colours
+// const COLORS = {
+//   Push: {
+//     // Electric Electric Purple - intense, focused energy
+//     bg: "bg-[#1E1B4B]",         // Deep midnight indigo
+//     border: "border-[#312E81]",   // Dark purple border
+//     borderAccent: "border-[#A78BFA]", // Neon purple highlight
+//     text: "text-[#818CF8]",     // Bright lavender text
+//     fill: "bg-[#6366F1]",       // Indigo fill
+//     light: "bg-[#2E2A72]",      // Medium dark indigo
+//   },
+//   Pull: {
+//     // Cyber Cyan - sharp, technological, clean
+//     bg: "bg-[#082F49]",         // Deep ocean shadow
+//     border: "border-[#0C4A6E]",   // Dark blue-grey border
+//     borderAccent: "border-[#22D3EE]", // Piercing neon cyan
+//     text: "text-[#06B6D4]",     // Vivid cyan text
+//     fill: "bg-[#0891B2]",       // Cyan fill
+//     light: "bg-[#0E5A75]",      // Medium deep cyan
+//   },
+//   Legs: {
+//     // Acid Lime / Volt - high intensity, maximum effort
+//     bg: "bg-[#14532D]",         // Deep forest shade
+//     border: "border-[#166534]",   // Dark olive border
+//     borderAccent: "border-[#A3E635]", // Blinding volt/lime
+//     text: "text-[#84CC16]",     // Hyper-green text
+//     fill: "bg-[#65A30D]",       // Volt fill
+//     light: "bg-[#1B703A]",      // Medium deep green
+//   },
+//   Cardio: {
+//     // Molten Amber - heat, endurance, sweat
+//     bg: "bg-[#451A03]",         // Burnt charcoal amber
+//     border: "border-[#78350F]",   // Dark rust border
+//     borderAccent: "border-[#FB923C]", // Neon safety orange
+//     text: "text-[#F97316]",     // Warning orange text
+//     fill: "bg-[#EA580C]",       // Flame fill
+//     light: "bg-[#5C2406]",      // Medium burnt orange
+//   },
+// };
+
+
 //  DARK MODE COLOR VARIABLES
 const DARK = {
   bg: "bg-[#000000]", // main app background
@@ -293,6 +374,19 @@ function getLastStats(history, exercise) {
     }
   }
   return null;
+}
+
+function getSuggestedRowsFromLastStats(lastStats, category) {
+  if (!lastStats) return [emptySet()];
+  if (category === "Cardio") return lastStats.rows;
+
+  return lastStats.rows.map((row) => {
+    const reps = Number.parseFloat(row.reps);
+    return {
+      ...row,
+      reps: Number.isFinite(reps) ? String(reps + 1) : row.reps,
+    };
+  });
 }
 
 function NumberWheel({
@@ -927,7 +1021,7 @@ function SessionBestSetsOverlay({ bestSets, darkMode, onClose }) {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState("Push");
+  const [activeTab, setActiveTab] = useState(null);
   const [view, setView] = useState("log");
   const [entries, setEntries] = useState({
     Push: [emptyEntry()],
@@ -988,19 +1082,32 @@ export default function App() {
 
   const switchTab = (tab) => {
     const scrollY = window.scrollY;
-    if (showExerciseSelectModal) {
-      const tabEntries = entries[tab] || [emptyEntry()];
-      const emptyIdx = tabEntries.findIndex((entry) => !entry.exercise);
-      setSelectingExerciseIdx(emptyIdx === -1 ? tabEntries.length : emptyIdx);
-      setExerciseSearchQuery("");
-      if (emptyIdx === -1) {
-        setEntries((prev) => ({
-          ...prev,
-          [tab]: [...(prev[tab] || []), emptyEntry()],
-        }));
-      }
-    }
+    const tabEntries = entries[tab] || [emptyEntry()];
+    const hasExercise = tabEntries.some((entry) => entry.exercise);
+
     setActiveTab(tab);
+    if (hasExercise) {
+      setShowExerciseSelectModal(false);
+      setSelectingExerciseIdx(null);
+      setExerciseSearchQuery("");
+      requestAnimationFrame(() =>
+        window.scrollTo({ top: scrollY, behavior: "instant" }),
+      );
+      return;
+    }
+
+    const emptyIdx = tabEntries.findIndex((entry) => !entry.exercise);
+    const nextIdx = emptyIdx === -1 ? tabEntries.length : emptyIdx;
+
+    if (emptyIdx === -1) {
+      setEntries((prev) => ({
+        ...prev,
+        [tab]: [...(prev[tab] || []), emptyEntry()],
+      }));
+    }
+    setSelectingExerciseIdx(nextIdx);
+    setExerciseSearchQuery("");
+    setShowExerciseSelectModal(true);
     requestAnimationFrame(() =>
       window.scrollTo({ top: scrollY, behavior: "instant" }),
     );
@@ -1272,7 +1379,7 @@ export default function App() {
     return () => clearInterval(t);
   }, [sessionStartTime]);
 
-  const c = COLORS[activeTab];
+  const c = activeTab ? COLORS[activeTab] : COLORS.Push;
 
   const scrollExerciseToTop = (idx) => {
     window.setTimeout(() => {
@@ -1284,12 +1391,13 @@ export default function App() {
   };
 
   const updateEntry = (idx, field, val) => {
+    if (!activeTab) return;
     setEntries((prev) => {
       const tab = [...prev[activeTab]];
       let rows = tab[idx].rows;
       if (field === "exercise" && val) {
         const lastStats = getLastStats(history, val);
-        rows = lastStats ? lastStats.rows : [emptySet()];
+        rows = getSuggestedRowsFromLastStats(lastStats, activeTab);
       } else if (field === "exercise") {
         rows = [emptySet()];
       }
@@ -1299,6 +1407,7 @@ export default function App() {
   };
 
   const updateRow = (eIdx, rIdx, field, val) => {
+    if (!activeTab) return;
     setEntries((prev) => {
       const tab = [...prev[activeTab]];
       const rows = [...tab[eIdx].rows];
@@ -1310,6 +1419,7 @@ export default function App() {
   };
 
   const addSet = (eIdx) => {
+    if (!activeTab) return;
     setEntries((prev) => {
       const tab = [...prev[activeTab]];
       const rows = tab[eIdx].rows;
@@ -1317,7 +1427,7 @@ export default function App() {
       const newSet = {
         _id: createSetId(),
         weight: prev2?.weight || "",
-        reps: prev2?.reps ? String(parseInt(prev2.reps) + 1) : "",
+        reps: prev2?.reps || "",
         complete: false,
       };
       tab[eIdx] = { ...tab[eIdx], rows: [...rows, newSet] };
@@ -1326,6 +1436,7 @@ export default function App() {
   };
 
   const toggleSetComplete = (eIdx, rIdx) => {
+    if (!activeTab) return;
     setEntries((prev) => {
       const tab = [...prev[activeTab]];
       const rows = [...tab[eIdx].rows];
@@ -1336,6 +1447,7 @@ export default function App() {
   };
 
   const removeSet = (eIdx, setId) => {
+    if (!activeTab) return;
     setEntries((prev) => {
       const tab = [...prev[activeTab]];
       const rowToRemove = tab[eIdx].rows.find((row) => row._id === setId);
@@ -1354,12 +1466,14 @@ export default function App() {
   };
 
   const addExercise = () =>
+    activeTab &&
     setEntries((prev) => ({
       ...prev,
       [activeTab]: [...prev[activeTab], emptyEntry()],
     }));
 
   const removeExercise = (idx) => {
+    if (!activeTab) return;
     setEntries((prev) => {
       const tab = prev[activeTab].filter((_, i) => i !== idx);
       return { ...prev, [activeTab]: tab.length ? tab : [emptyEntry()] };
@@ -1367,6 +1481,7 @@ export default function App() {
   };
 
   const requestRemoveSet = (eIdx, row) => {
+    if (!activeTab) return;
     const setId = row._id;
     if (deletingSets[setId]) return;
 
@@ -1470,6 +1585,7 @@ export default function App() {
         Legs: [emptyEntry()],
         Cardio: [emptyEntry()],
       });
+      setActiveTab(null);
       setSaved(false);
     }, 1500);
   };
@@ -1581,7 +1697,7 @@ export default function App() {
   const version = new Date(import.meta.env.VITE_COMMIT_DATE);
   const day = version.getDate();
   const month = version.getMonth() + 1;
-  const activeEntries = entries[activeTab] || [];
+  const activeEntries = activeTab ? entries[activeTab] || [] : [];
   const visibleDefaultExercises = (EXERCISES[deleteExerciseTab] || []).filter(
     (ex) => !deletedExercises[deleteExerciseTab]?.includes(ex),
   );
@@ -1940,7 +2056,7 @@ export default function App() {
           >
             {/* Subsection: List of Exercises */}
             <div data-name="Exercise-List" className="flex flex-col gap-3.5">
-              {entries[activeTab].map((entry, eIdx) => {
+              {activeEntries.map((entry, eIdx) => {
                 const lastStats = entry.exercise
                   ? getLastStats(history, entry.exercise)
                   : null;
@@ -2816,6 +2932,7 @@ export default function App() {
 
         {/* Exercise Select Modal */}
         {showExerciseSelectModal &&
+          activeTab &&
           selectingExerciseIdx !== null &&
           (() => {
             const allExercises = [
@@ -3130,7 +3247,7 @@ export default function App() {
                   <div
                     data-name="Bottom-Exercise-Selector"
                     className={
-                      showExerciseSelectModal
+                      showExerciseSelectModal || !activeTab
                         ? "hidden"
                         : "mb-2 flex items-stretch"
                     }
@@ -3221,7 +3338,14 @@ export default function App() {
                 {["log", "history", "stats"].map((v) => (
                   <button
                     key={v}
-                    onClick={() => setView(v)}
+                    onClick={() => {
+                      if (v !== "log") {
+                        setShowExerciseSelectModal(false);
+                        setSelectingExerciseIdx(null);
+                        setExerciseSearchQuery("");
+                      }
+                      setView(v);
+                    }}
                     className={`flex-1 py-[9px] rounded-[10px] border-none cursor-pointer text-[13px] font-semibold transition-all duration-200 ${
                       view === v
                         ? darkMode
