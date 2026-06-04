@@ -528,6 +528,30 @@ function StepperControl({
 }
 
 function StatsView({ history, darkMode }) {
+  const [shareMessage, setShareMessage] = useState("");
+
+  const shareAppLink = async () => {
+    setShareMessage("");
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: "Taji Tracker",
+          text: "Track your workouts with Taji Tracker.",
+          url: SITE_URL,
+        });
+        return;
+      }
+
+      await navigator.clipboard.writeText(SITE_URL);
+      setShareMessage("Link copied");
+      window.setTimeout(() => setShareMessage(""), 1800);
+    } catch (error) {
+      if (error?.name === "AbortError") return;
+      setShareMessage("Could not share");
+      window.setTimeout(() => setShareMessage(""), 1800);
+    }
+  };
+
   if (history.length === 0)
     return (
       <div className="text-center text-[#bbb] mt-[60px] text-[15px]">
@@ -799,6 +823,20 @@ function StatsView({ history, darkMode }) {
               >
                 Scan to share TAji Tracker
               </div>
+              <button
+                type="button"
+                onClick={shareAppLink}
+                className={`mt-3 rounded-xl px-5 py-2.5 text-[13px] font-black transition-colors ${darkMode ? "bg-white text-black" : "bg-[#e87878] text-white"}`}
+              >
+                Share app
+              </button>
+              {shareMessage && (
+                <div
+                  className={`mt-2 text-center text-[12px] font-bold ${darkMode ? DARK.textMuted : "text-[#999]"}`}
+                >
+                  {shareMessage}
+                </div>
+              )}
             </div>
             <h2
               className={`text-large text-center m-4 ${darkMode ? "text-green-400" : "text-green-700"}`}
