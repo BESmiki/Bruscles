@@ -35,7 +35,6 @@ const COLORS = {
     borderAccent: "border-[#C98C8C]",
     text: "text-[#C98C8C]",
     fill: "bg-[#C98C8C]",
-    light: "bg-[#F1E2E2]",
   },
   Pull: {
     bg: "bg-[#E7EBF0]",
@@ -43,7 +42,6 @@ const COLORS = {
     borderAccent: "border-[#7E90A8]",
     text: "text-[#7E90A8]",
     fill: "bg-[#7E90A8]",
-    light: "bg-[#E3E8EE]",
   },
   Legs: {
     bg: "bg-[#E8EFE6]",
@@ -51,7 +49,6 @@ const COLORS = {
     borderAccent: "border-[#8FA58A]",
     text: "text-[#8FA58A]",
     fill: "bg-[#8FA58A]",
-    light: "bg-[#E3EBE1]",
   },
   Cardio: {
     bg: "bg-[#F3ECE3]",
@@ -59,90 +56,8 @@ const COLORS = {
     borderAccent: "border-[#C9A06B]",
     text: "text-[#C9A06B]",
     fill: "bg-[#C9A06B]",
-    light: "bg-[#EFE6DA]",
   },
 };
-
-// color theme 2
-// const COLORS = {
-//   Push: {
-//     // A sophisticated, energetic coral/crimson vibe
-//     bg: "bg-[#FFF5F5]",
-//     border: "border-[#FEE2E2]",
-//     borderAccent: "border-[#F87171]",
-//     text: "text-[#EF4444]",
-//     fill: "bg-[#EF4444]",
-//     light: "bg-[#FEF2F2]",
-//   },
-//   Pull: {
-//     // A tech-forward, deep electric/slate blue
-//     bg: "bg-[#F0F7FF]",
-//     border: "border-[#E0F2FE]",
-//     borderAccent: "border-[#38BDF8]",
-//     text: "text-[#0EA5E9]",
-//     fill: "bg-[#0EA5E9]",
-//     light: "bg-[#F0F9FF]",
-//   },
-//   Legs: {
-//     // A fresh, botanical emerald green signifying strength and growth
-//     bg: "bg-[#F0FDF4]",
-//     border: "border-[#DCFCE7]",
-//     borderAccent: "border-[#4ADE80]",
-//     text: "text-[#10B981]",
-//     fill: "bg-[#10B981]",
-//     light: "bg-[#F0FDF4]",
-//   },
-//   Cardio: {
-//     // An active, high-visibility sunset orange/amber
-//     bg: "bg-[#FFFBEB]",
-//     border: "border-[#FEF3C7]",
-//     borderAccent: "border-[#FBBF24]",
-//     text: "text-[#F59E0B]",
-//     fill: "bg-[#F59E0B]",
-//     light: "bg-[#FFFDF5]",
-//   },
-// };
-
-//alt dark mode colours
-// const COLORS = {
-//   Push: {
-//     // Electric Electric Purple - intense, focused energy
-//     bg: "bg-[#1E1B4B]",         // Deep midnight indigo
-//     border: "border-[#312E81]",   // Dark purple border
-//     borderAccent: "border-[#A78BFA]", // Neon purple highlight
-//     text: "text-[#818CF8]",     // Bright lavender text
-//     fill: "bg-[#6366F1]",       // Indigo fill
-//     light: "bg-[#2E2A72]",      // Medium dark indigo
-//   },
-//   Pull: {
-//     // Cyber Cyan - sharp, technological, clean
-//     bg: "bg-[#082F49]",         // Deep ocean shadow
-//     border: "border-[#0C4A6E]",   // Dark blue-grey border
-//     borderAccent: "border-[#22D3EE]", // Piercing neon cyan
-//     text: "text-[#06B6D4]",     // Vivid cyan text
-//     fill: "bg-[#0891B2]",       // Cyan fill
-//     light: "bg-[#0E5A75]",      // Medium deep cyan
-//   },
-//   Legs: {
-//     // Acid Lime / Volt - high intensity, maximum effort
-//     bg: "bg-[#14532D]",         // Deep forest shade
-//     border: "border-[#166534]",   // Dark olive border
-//     borderAccent: "border-[#A3E635]", // Blinding volt/lime
-//     text: "text-[#84CC16]",     // Hyper-green text
-//     fill: "bg-[#65A30D]",       // Volt fill
-//     light: "bg-[#1B703A]",      // Medium deep green
-//   },
-//   Cardio: {
-//     // Molten Amber - heat, endurance, sweat
-//     bg: "bg-[#451A03]",         // Burnt charcoal amber
-//     border: "border-[#78350F]",   // Dark rust border
-//     borderAccent: "border-[#FB923C]", // Neon safety orange
-//     text: "text-[#F97316]",     // Warning orange text
-//     fill: "bg-[#EA580C]",       // Flame fill
-//     light: "bg-[#5C2406]",      // Medium burnt orange
-//   },
-// };
-
 
 //  DARK MODE COLOR VARIABLES
 const DARK = {
@@ -152,8 +67,6 @@ const DARK = {
   bgInput: "bg-[#0a0a0a]", // weight/reps value display
   bgTab: "bg-[#111111]", // view switcher pill background
   bgTabInactive: "bg-[#1e1e1e]", // inactive category tabs & buttons
-  bgStickyTab: "bg-[#1e1e1e]", // sticky bar inactive tabs
-  border: "border-[#222222]", // general borders
   borderCard: "border-[#2a2a2a]", // card borders
   text: "text-[#f0f0f0]", // primary text
   textSecondary: "text-[#aaaaaa]", // secondary text
@@ -1716,9 +1629,7 @@ export default function App() {
         ? "assets/strong_animate.gif"
         : "assets/workout.gif";
   const emptyExerciseIdx = activeEntries.findIndex((entry) => !entry.exercise);
-  const showBottomExerciseSelector = emptyExerciseIdx !== -1;
-  const bottomExerciseIdx = showBottomExerciseSelector ? emptyExerciseIdx : 0;
-  const bottomExercise = activeEntries[bottomExerciseIdx] || emptyEntry();
+  const bottomExerciseIdx = emptyExerciseIdx !== -1 ? emptyExerciseIdx : 0;
   const canAddExercise =
     activeEntries.length > 0 && activeEntries.every((entry) => entry.exercise);
   const hasWorkoutData = Object.values(entries).some((tab) =>
@@ -2376,137 +2287,6 @@ export default function App() {
                                   </button>
                                 </div>
                               </div>
-                              {false && (
-                                <>
-                                  {/* Weight row */}
-                                  <div className="flex items-center gap-1.5 mb-2">
-                                    <span
-                                      className={`text-[13px] font-semibold ${c.text} w-[52px]`}
-                                    >
-                                      {activeTab === "Cardio"
-                                        ? "Dist"
-                                        : "Weight"}
-                                    </span>
-                                    <span
-                                      className={`${darkMode ? DARK.bgCard : "bg-white"} border-2 ${c.border} ${c.text} rounded-lg py-[5px] px-2.5 text-[18px] font-black min-w-[50px] text-center`}
-                                    >
-                                      {row.weight || "—"}
-                                      {activeTab === "Cardio" ? "km" : ""}
-                                    </span>
-                                    <div className="flex gap-1 flex-1">
-                                      <button
-                                        onClick={() =>
-                                          updateRow(
-                                            eIdx,
-                                            rIdx,
-                                            "weight",
-                                            Math.max(
-                                              0,
-                                              (parseFloat(row.weight) || 0) - 1,
-                                            ).toString(),
-                                          )
-                                        }
-                                        className={`flex-1 ${c.bg} border ${c.border} ${c.text} rounded-lg py-[5px] text-[13px] font-bold cursor-pointer`}
-                                      >
-                                        −1
-                                      </button>
-                                      <button
-                                        onClick={() =>
-                                          updateRow(
-                                            eIdx,
-                                            rIdx,
-                                            "weight",
-                                            (
-                                              (parseFloat(row.weight) || 0) + 1
-                                            ).toString(),
-                                          )
-                                        }
-                                        className={`flex-1 ${c.bg} border ${c.border} ${c.text} rounded-lg py-[5px] text-[13px] font-bold cursor-pointer`}
-                                      >
-                                        +1
-                                      </button>
-                                      <button
-                                        onClick={() =>
-                                          updateRow(
-                                            eIdx,
-                                            rIdx,
-                                            "weight",
-                                            (
-                                              (parseFloat(row.weight) || 0) + 5
-                                            ).toString(),
-                                          )
-                                        }
-                                        className={`flex-1 ${c.bg} border ${c.border} ${c.text} rounded-lg py-[5px] text-[13px] font-bold cursor-pointer`}
-                                      >
-                                        +5
-                                      </button>
-                                    </div>
-                                  </div>
-
-                                  {/* Reps row */}
-                                  <div className="flex items-center gap-1.5">
-                                    <span
-                                      className={`text-[13px] font-semibold ${c.text} w-[52px]`}
-                                    >
-                                      {activeTab === "Cardio" ? "Time" : "Reps"}
-                                    </span>
-                                    <span
-                                      className={`${darkMode ? DARK.bgCard : "bg-white"} border-2 ${c.border} ${c.text} rounded-lg py-[5px] px-2.5 text-[18px] font-black min-w-[50px] text-center`}
-                                    >
-                                      {row.reps || "—"}
-                                      {activeTab === "Cardio" ? "m" : ""}
-                                    </span>
-                                    <div className="flex gap-1 flex-1">
-                                      <button
-                                        onClick={() =>
-                                          updateRow(
-                                            eIdx,
-                                            rIdx,
-                                            "reps",
-                                            Math.max(
-                                              0,
-                                              (parseFloat(row.reps) || 0) - 1,
-                                            ).toString(),
-                                          )
-                                        }
-                                        className={`flex-1 ${c.bg} border ${c.border} ${c.text} rounded-lg py-[5px] text-[13px] font-bold cursor-pointer`}
-                                      >
-                                        −1
-                                      </button>
-                                      <button
-                                        onClick={() =>
-                                          updateRow(
-                                            eIdx,
-                                            rIdx,
-                                            "reps",
-                                            (
-                                              (parseFloat(row.reps) || 0) + 1
-                                            ).toString(),
-                                          )
-                                        }
-                                        className={`flex-1 ${c.bg} border ${c.border} ${c.text} rounded-lg py-[5px] text-[13px] font-bold cursor-pointer`}
-                                      >
-                                        +1
-                                      </button>
-                                      <button
-                                        onClick={() =>
-                                          updateRow(
-                                            eIdx,
-                                            rIdx,
-                                            "reps",
-                                            (
-                                              (parseFloat(row.reps) || 0) + 5
-                                            ).toString(),
-                                          )
-                                        }
-                                        className={`flex-1 ${c.bg} border ${c.border} ${c.text} rounded-lg py-[5px] text-[13px] font-bold cursor-pointer`}
-                                      >
-                                        +5
-                                      </button>
-                                    </div>
-                                  </div>
-                                </>
-                              )}
                             </div>
                           </div>
                         </div>
@@ -2886,27 +2666,6 @@ export default function App() {
                 </>
               )}
 
-              {false && deletedExercises[deleteExerciseTab]?.length > 0 && (
-                <details className="mb-4">
-                  <summary
-                    className={`cursor-pointer select-none rounded-lg px-3 py-2 text-sm font-semibold ${darkMode ? `${DARK.bgTabInactive} ${DARK.textSecondary}` : "bg-[#e8e4e0] text-[#666]"}`}
-                  >
-                    Deleted Exercises (
-                    {deletedExercises[deleteExerciseTab].length})
-                  </summary>
-                  <div className="space-y-2 mt-2 max-h-[200px] overflow-y-auto">
-                    {deletedExercises[deleteExerciseTab]?.map((ex) => (
-                      <button
-                        key={`deleted-${ex}`}
-                        onClick={() => restoreExercise(ex)}
-                        className={`w-full p-3 rounded-lg text-left font-semibold transition-colors ${darkMode ? `${DARK.bgTabInactive} ${DARK.textSecondary}` : "bg-[#e8e4e0] text-[#666]"} hover:bg-[#4CAF50] hover:text-white`}
-                      >
-                        ↩️ {ex}
-                      </button>
-                    ))}
-                  </div>
-                </details>
-              )}
 
               {visibleDefaultExercises.length === 0 &&
                 visibleCustomExercises.length === 0 && (
