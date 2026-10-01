@@ -92,6 +92,22 @@ body {
   display: none;
 }
 
+.theme-toggle-input.theme-toggle-input-accessible {
+  display: block;
+  position: absolute;
+  width: 54px;
+  height: 30px;
+  margin: 0;
+  opacity: 0;
+  z-index: 1;
+  cursor: pointer;
+}
+
+.theme-toggle-input:focus-visible + .theme-toggle {
+  outline: 2px solid #c98c8c;
+  outline-offset: 4px;
+}
+
 .theme-toggle {
   position: relative;
   display: block;

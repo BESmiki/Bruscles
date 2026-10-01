@@ -1,4 +1,9 @@
 import { useState, useEffect, useRef } from "react";
+import SettingsView from "./SettingsView";
+import StepperControl from "./StepperControl";
+import { getStopwatchDelay, isValidStopwatchDelay, STOPWATCH_DELAY_STORAGE_KEY } from "./stopwatchSettings";
+import { getCategoryLabels, validateCategoryLabels } from "./categoryLabels";
+import { createWorkoutBackup, mergeWorkoutBackup, persistWorkoutBackup } from "./workoutBackup";
 
 const EXERCISES = {
   Push: [
@@ -395,163 +400,7 @@ function NumberWheel({
   );
 }
 
-function StepperControl({
-  label,
-  value,
-  unit,
-  min,
-  max,
-  step = 1,
-  onChange,
-  darkMode,
-  color,
-  disabled = false,
-}) {
-  const holdDelayRef = useRef(null);
-  const holdIntervalRef = useRef(null);
-  const currentValueRef = useRef(min);
-  const parsedValue = Number.parseFloat(value);
-  const currentValue = Number.isFinite(parsedValue)
-    ? Math.min(max, Math.max(min, parsedValue))
-    : min;
-  const displayValue = Number.isInteger(currentValue)
-    ? String(currentValue)
-    : String(Number(currentValue.toFixed(2)));
-
-  const changeBy = (delta) => {
-    if (disabled) return;
-    const nextValue = Math.min(
-      max,
-      Math.max(min, currentValueRef.current + delta),
-    );
-    currentValueRef.current = nextValue;
-    onChange(String(Number(nextValue.toFixed(3))));
-  };
-
-  const stopHold = () => {
-    clearTimeout(holdDelayRef.current);
-    clearInterval(holdIntervalRef.current);
-    holdDelayRef.current = null;
-    holdIntervalRef.current = null;
-  };
-
-  const startHold = (delta) => {
-    if (disabled) return;
-    stopHold();
-    holdDelayRef.current = window.setTimeout(() => {
-      holdIntervalRef.current = window.setInterval(() => {
-        changeBy(delta);
-      }, 90);
-    }, 360);
-  };
-
-  useEffect(() => {
-    currentValueRef.current = currentValue;
-  }, [currentValue]);
-
-  useEffect(() => stopHold, []);
-
-  const arrowClass = disabled
-    ? darkMode
-      ? "border-[#555]"
-      : "border-[#aaa]"
-    : color.borderAccent;
-
-  return (
-    <div className="min-w-0 flex-1">
-      <div
-        className={`mb-2 text-center text-[12px] font-bold ${disabled ? (darkMode ? "text-[#555]" : "text-[#aaa]") : color.text}`}
-      >
-        {label}
-      </div>
-      <div
-        className={`flex h-[108px] items-center rounded-2xl border px-3 ${
-          disabled
-            ? darkMode
-              ? "border-[#252525] bg-[#151515] opacity-70"
-              : "border-[#ebe2e2] bg-[#f5f1f1] opacity-70"
-            : darkMode
-              ? "border-[#2a2a2a] bg-[#111]"
-              : "border-[#eee6e6] bg-[#fffdfc]"
-        }`}
-      >
-        <div className="min-w-0 flex-1 text-center">
-          <span
-            className={`align-baseline text-[34px] font-black tabular-nums ${disabled ? (darkMode ? "text-[#777]" : "text-[#9f9fa6]") : color.text}`}
-          >
-            {displayValue}
-          </span>
-        </div>
-        <div
-          className={`ml-3 flex h-16 w-9 shrink-0 flex-col overflow-hidden border-l ${disabled ? (darkMode ? "border-[#252525]" : "border-[#e2dddd]") : darkMode ? "border-[#2a2a2a]" : "border-[#eadcdc]"}`}
-        >
-          <button
-            type="button"
-            onClick={() => changeBy(step)}
-            onPointerDown={() => startHold(step)}
-            onPointerUp={stopHold}
-            onPointerLeave={stopHold}
-            onPointerCancel={stopHold}
-            onBlur={stopHold}
-            onContextMenu={(e) => e.preventDefault()}
-            disabled={disabled || currentValue >= max}
-            className="flex flex-1 select-none touch-none items-center justify-center bg-transparent disabled:opacity-35"
-            style={{ WebkitTouchCallout: "none", WebkitUserSelect: "none" }}
-            aria-label={`Increase ${label}`}
-          >
-            <span
-              className={`block h-3 w-3 rotate-[225deg] border-b-2 border-r-2 ${arrowClass}`}
-            />
-          </button>
-          <button
-            type="button"
-            onClick={() => changeBy(-step)}
-            onPointerDown={() => startHold(-step)}
-            onPointerUp={stopHold}
-            onPointerLeave={stopHold}
-            onPointerCancel={stopHold}
-            onBlur={stopHold}
-            onContextMenu={(e) => e.preventDefault()}
-            disabled={disabled || currentValue <= min}
-            className="flex flex-1 select-none touch-none items-center justify-center bg-transparent disabled:opacity-35"
-            style={{ WebkitTouchCallout: "none", WebkitUserSelect: "none" }}
-            aria-label={`Decrease ${label}`}
-          >
-            <span
-              className={`block h-3 w-3 rotate-45 border-b-2 border-r-2 ${arrowClass}`}
-            />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function StatsView({ history, darkMode }) {
-  const [shareMessage, setShareMessage] = useState("");
-
-  const shareAppLink = async () => {
-    setShareMessage("");
-    try {
-      if (navigator.share) {
-        await navigator.share({
-          title: "Taji Tracker",
-          text: "Track your workouts with Taji Tracker.",
-          url: SITE_URL,
-        });
-        return;
-      }
-
-      await navigator.clipboard.writeText(SITE_URL);
-      setShareMessage("Link copied");
-      window.setTimeout(() => setShareMessage(""), 1800);
-    } catch (error) {
-      if (error?.name === "AbortError") return;
-      setShareMessage("Could not share");
-      window.setTimeout(() => setShareMessage(""), 1800);
-    }
-  };
-
+function StatsView({ history, darkMode, categoryLabels }) {
   if (history.length === 0)
     return (
       <div className="text-center text-[#bbb] mt-[60px] text-[15px]">
@@ -645,7 +494,7 @@ function StatsView({ history, darkMode }) {
                     <span
                       className={`text-xs font-bold px-2 py-0.5 rounded-full ${COLORS[stats.category].bg} ${COLORS[stats.category].text}`}
                     >
-                      {stats.category}
+                      {categoryLabels[stats.category]}
                     </span>
                     <span
                       className={`font-bold text-sm ${COLORS[stats.category].text}`}
@@ -677,7 +526,7 @@ function StatsView({ history, darkMode }) {
         return (
           <div key={tab} className="mb-[18px]">
             <div className="flex justify-between mb-1.5">
-              <span className={`font-bold ${col.text} text-sm`}>{tab}</span>
+              <span className={`font-bold ${col.text} text-sm`}>{categoryLabels[tab]}</span>
               <span className="font-bold text-[#aaa] text-sm">
                 {pct}%{" "}
                 <span className="font-normal text-xs">
@@ -808,36 +657,6 @@ function StatsView({ history, darkMode }) {
                 </div>
               </div>
             )}
-            <div
-              className={`mx-auto mt-2 flex w-fit flex-col items-center rounded-2xl border p-4 ${darkMode ? `${DARK.bgCard} ${DARK.borderCard}` : "bg-white border-[#e0dbd6]"}`}
-            >
-              <a href={SITE_URL} target="_blank" rel="noreferrer">
-                <img
-                  src={SITE_QR_URL}
-                  alt="QR code for Bruscles"
-                  className="h-[180px] w-[180px] rounded-xl"
-                />
-              </a>
-              <div
-                className={`mt-3 text-center text-[12px] font-bold ${darkMode ? DARK.textMuted : "text-[#999]"}`}
-              >
-                Scan to share TAji Tracker
-              </div>
-              <button
-                type="button"
-                onClick={shareAppLink}
-                className={`mt-3 rounded-xl px-5 py-2.5 text-[13px] font-black transition-colors ${darkMode ? "bg-white text-black" : "bg-[#e87878] text-white"}`}
-              >
-                Share app
-              </button>
-              {shareMessage && (
-                <div
-                  className={`mt-2 text-center text-[12px] font-bold ${darkMode ? DARK.textMuted : "text-[#999]"}`}
-                >
-                  {shareMessage}
-                </div>
-              )}
-            </div>
             <h2
               className={`text-large text-center m-4 ${darkMode ? "text-green-400" : "text-green-700"}`}
             >
@@ -850,7 +669,7 @@ function StatsView({ history, darkMode }) {
   );
 }
 
-function SessionBestSetsOverlay({ bestSets, darkMode, onClose }) {
+function SessionBestSetsOverlay({ bestSets, darkMode, categoryLabels, onClose }) {
   const hasBestSets = bestSets.length > 0;
 
   return (
@@ -897,7 +716,7 @@ function SessionBestSetsOverlay({ bestSets, darkMode, onClose }) {
                         <div
                           className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-black ${col.bg} ${col.text}`}
                         >
-                          {item.category}
+                          {categoryLabels[item.category]}
                         </div>
                         <div
                           className={`mt-2 text-[18px] font-black leading-snug ${darkMode ? DARK.text : "text-[#3d3737]"}`}
@@ -974,6 +793,20 @@ function SessionBestSetsOverlay({ bestSets, darkMode, onClose }) {
 export default function App() {
   const [activeTab, setActiveTab] = useState(null);
   const [view, setView] = useState("log");
+  const [stopwatchDelay, setStopwatchDelay] = useState(() => {
+    try {
+      return getStopwatchDelay(localStorage.getItem(STOPWATCH_DELAY_STORAGE_KEY));
+    } catch {
+      return getStopwatchDelay(null);
+    }
+  });
+  const [categoryLabels, setCategoryLabels] = useState(() => {
+    try {
+      return getCategoryLabels(JSON.parse(localStorage.getItem("category_labels")));
+    } catch {
+      return getCategoryLabels();
+    }
+  });
   const [entries, setEntries] = useState({
     Push: [emptyEntry()],
     Pull: [emptyEntry()],
@@ -1109,6 +942,7 @@ export default function App() {
   const [sessionStartTime, setSessionStartTime] = useState(Date.now());
   const fileInputRef = useRef(null);
   const stopwatchRef = useRef(null);
+  const fullscreenStopwatchRef = useRef(false);
   const allowRefreshRef = useRef(false);
   const hasOpenExercise = Object.values(entries).some((tab) =>
     tab.some((entry) => entry.exercise),
@@ -1199,6 +1033,14 @@ export default function App() {
   }, [shouldWarnBeforeRefresh]);
 
   useEffect(() => {
+    fullscreenStopwatchRef.current = showFullscreenStopwatch;
+  }, [showFullscreenStopwatch]);
+
+  useEffect(() => {
+    if (view === "settings") {
+      setShowFullscreenStopwatch(false);
+      return;
+    }
     let inactivityTimer;
     const events = [
       "pointerdown",
@@ -1212,7 +1054,7 @@ export default function App() {
       const pressedFullscreenControl = event?.target?.closest?.(
         "[data-fullscreen-stopwatch-timer], [data-fullscreen-stopwatch-controls]",
       );
-      if (!pressedFullscreenControl && showFullscreenStopwatch) {
+      if (!pressedFullscreenControl && fullscreenStopwatchRef.current) {
         setShowFullscreenStopwatch(false);
         setIsBlocked(true);
         // screen inactivity after stopwatch
@@ -1226,8 +1068,7 @@ export default function App() {
           setShowFullscreenStopwatch(true);
         }
         // this is the time that the fullscreen stopwatch will take over
-      }, 10000);
-      // }, 999999);
+      }, stopwatchDelay * 1000);
     };
 
     resetInactivityTimer();
@@ -1243,7 +1084,7 @@ export default function App() {
         window.removeEventListener(eventName, resetInactivityTimer),
       );
     };
-  }, []);
+  }, [view, stopwatchDelay]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -1551,7 +1392,7 @@ export default function App() {
 
   const downloadWorkoutData = () => {
     const dataStr = JSON.stringify(
-      { history, customExercises, deletedExercises },
+      createWorkoutBackup({ history, customExercises, deletedExercises, categoryLabels }, EXERCISES),
       null,
       2,
     );
@@ -1573,70 +1414,21 @@ export default function App() {
     reader.onload = (e) => {
       try {
         const importedData = JSON.parse(e.target.result);
-        let historyData, customEx, deletedEx;
-        if (Array.isArray(importedData)) {
-          historyData = importedData;
-          customEx = { Push: [], Pull: [], Legs: [], Cardio: [] };
-          deletedEx = { Push: [], Pull: [], Legs: [], Cardio: [] };
-        } else {
-          historyData = importedData.history || [];
-          customEx = importedData.customExercises || {
-            Push: [],
-            Pull: [],
-            Legs: [],
-            Cardio: [],
-          };
-          deletedEx = importedData.deletedExercises || {
-            Push: [],
-            Pull: [],
-            Legs: [],
-            Cardio: [],
-          };
-        }
-        const merged = [...historyData, ...history];
-        const uniqueMerged = [];
-        const seenIds = new Set();
-        for (const session of merged) {
-          if (!seenIds.has(session.id)) {
-            seenIds.add(session.id);
-            uniqueMerged.push(session);
-          }
-        }
-        const mergedCustomEx = { ...customEx };
-        const mergedDeletedEx = { ...deletedEx };
-        for (const tab of TABS) {
-          mergedCustomEx[tab] = [
-            ...new Set([
-              ...(customEx[tab] || []),
-              ...(customExercises[tab] || []),
-            ]),
-          ];
-          mergedDeletedEx[tab] = [
-            ...new Set([
-              ...(deletedEx[tab] || []),
-              ...(deletedExercises[tab] || []),
-            ]),
-          ];
-        }
-        setHistory(uniqueMerged);
-        setCustomExercises(mergedCustomEx);
-        setDeletedExercises(mergedDeletedEx);
-        try {
-          localStorage.setItem("workout_history", JSON.stringify(uniqueMerged));
-          localStorage.setItem(
-            "custom_exercises",
-            JSON.stringify(mergedCustomEx),
-          );
-          localStorage.setItem(
-            "deleted_exercises",
-            JSON.stringify(mergedDeletedEx),
-          );
-        } catch {}
+        const restored = mergeWorkoutBackup(
+          importedData,
+          { history, customExercises, deletedExercises, categoryLabels },
+          EXERCISES,
+        );
+        persistWorkoutBackup(restored, localStorage);
+        setHistory(restored.history);
+        setCustomExercises(restored.customExercises);
+        setDeletedExercises(restored.deletedExercises);
+        setCategoryLabels(restored.categoryLabels);
         alert(
-          `✅ Successfully imported ${historyData.length} workout session(s)!`,
+          `✅ Backup imported: ${restored.importedSessionCount} workout session(s). Category names and exercises are ready.`,
         );
       } catch (error) {
-        alert("Error reading file. Please make sure it's a valid JSON file.");
+        alert(`Could not import backup: ${error.message}`);
       }
     };
     reader.readAsText(file);
@@ -1644,6 +1436,30 @@ export default function App() {
   };
 
   const triggerFileUpload = () => fileInputRef.current?.click();
+
+  const saveCategoryLabels = (labels) => {
+    const error = validateCategoryLabels(labels);
+    if (error) return error;
+    const updated = getCategoryLabels(labels);
+    try {
+      localStorage.setItem("category_labels", JSON.stringify(updated));
+    } catch {
+      return "Could not save names on this device. Please try again.";
+    }
+    setCategoryLabels(updated);
+    return "";
+  };
+
+  const saveStopwatchDelay = (seconds) => {
+    if (!isValidStopwatchDelay(seconds)) return "Choose a delay between 1 and 99 seconds.";
+    try {
+      localStorage.setItem(STOPWATCH_DELAY_STORAGE_KEY, String(seconds));
+    } catch {
+      return "Could not save the delay on this device. Please try again.";
+    }
+    setStopwatchDelay(seconds);
+    return "";
+  };
 
   const version = new Date(import.meta.env.VITE_COMMIT_DATE);
   const day = version.getDate();
@@ -1768,7 +1584,7 @@ export default function App() {
   return (
     <div
       data-name="App-Container"
-      className={`font-sans min-h-screen py-5 px-3 pb-[75dvh] transition-colors duration-300 ${darkMode ? DARK.bg : "bg-[#f9f7f4]"}`}
+      className={`font-sans min-h-screen py-5 px-3 ${view === "settings" ? "pb-28" : "pb-[75dvh]"} transition-colors duration-300 ${darkMode ? DARK.bg : "bg-[#f9f7f4]"}`}
     >
       {showRefreshWarningModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[120] px-4">
@@ -1934,6 +1750,14 @@ export default function App() {
           </div>
         </div>
       )}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".json"
+        onChange={uploadWorkoutData}
+        className="hidden"
+        aria-label="Import workout backup"
+      />
       <div data-name="Main-Content-Wrapper" className="max-w-[680px] mx-auto">
         <p data-name="app-version" className="text-[12px] text-gray-500 mb-2">
           V{day}.{month}
@@ -1950,7 +1774,7 @@ export default function App() {
           data-name="Sticky-Stopwatch-Wrapper"
           className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isSticky ? "bg-opacity-95 shadow-md" : "pointer-events-none"} ${darkMode ? DARK.bg : "bg-[#f9f7f4]"}`}
         >
-          {isSticky && (
+          {isSticky && view !== "settings" && (
             <div className="max-w-[680px] mx-auto px-3">
               <div
                 onClick={resetStopwatch}
@@ -1967,34 +1791,20 @@ export default function App() {
         </div>
 
         <div data-name="Header-Section" className="text-center mb-4 relative">
-          <div className="absolute top-0 right-0">
-            <input
-              type="checkbox"
-              id="dark-mode-toggle"
-              checked={darkMode}
-              onChange={() => setDarkMode(!darkMode)}
-              className="theme-toggle-input"
-            />
-            <label
-              htmlFor="dark-mode-toggle"
-              className="theme-toggle"
-              aria-label="Toggle dark mode"
-            />
-          </div>
           <img
             src={petImage}
             className="block mx-auto w-20 cursor-pointer hover:opacity-80 transition-opacity"
             alt="Logo"
             onClick={() => setShowLogoModal(true)}
           />
-          <div
+          {view !== "settings" && <div
             data-name="Stopwatch-Display"
             onClick={resetStopwatch}
             className={`text-[72px] font-bold ${c.text} tracking-[2px] tabular-nums duration-[1000ms] ease-in-out cursor-pointer hover:opacity-70 transition-opacity`}
           >
             {String(Math.floor(elapsed / 60)).padStart(2, "0")}:
             {String(elapsed % 60).padStart(2, "0")}
-          </div>
+          </div>}
         </div>
 
         {/* SECTION: Logging View */}
@@ -2369,45 +2179,6 @@ export default function App() {
               )}
               :{String(totalSessionTime % 60).padStart(2, "0")}
             </div>
-            {history.length > 0 && !isAppInstalled && (
-              <>
-                <button
-                  type="button"
-                  onClick={installApp}
-                  className="mx-auto block w-[60%] p-[13px] rounded-xl border-none text-white text-[15px] font-bold cursor-pointer transition-colors duration-300 bg-[#c98c8c] mb-2 hover:bg-[#c85c5c]"
-                >
-                  {isAppInstalled ? "App Installed" : "Install App"}
-                </button>
-                {installMessage && (
-                  <div
-                    className={`text-center text-xs mb-2 ${darkMode ? DARK.textMuted : "text-[#aaa]"}`}
-                  >
-                    {installMessage}
-                  </div>
-                )}
-              </>
-            )}
-            {history.length > 0 && (
-              <button
-                onClick={downloadWorkoutData}
-                className="mx-auto block w-[60%] p-[13px] rounded-xl border-none text-white text-[15px] font-bold cursor-pointer transition-colors duration-300 bg-[#8fa58a] mb-2 hover:bg-[#7bb88b]"
-              >
-                Download Data
-              </button>
-            )}
-            <button
-              onClick={triggerFileUpload}
-              className="mx-auto block w-[60%] p-[13px] rounded-xl border-none text-white text-[15px] font-bold cursor-pointer transition-colors duration-300 bg-[#7e90a8] mb-4 hover:bg-[#6a94b9]"
-            >
-              Upload Data
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".json"
-              onChange={uploadWorkoutData}
-              className="hidden"
-            />
             <h2
               className={`mb-4 text-center text-[17px] font-black ${darkMode ? DARK.text : "text-[#555]"}`}
             >
@@ -2419,8 +2190,7 @@ export default function App() {
               >
                 <p>No sessions saved yet.</p>
                 <p className="text-[13px]">
-                  Complete a workout and hit Workout Finished, or upload a
-                  backup file!
+                  Finish a workout to save it here, or import a backup in Settings.
                 </p>
               </div>
             ) : (
@@ -2491,7 +2261,7 @@ export default function App() {
                                   key={tab}
                                   className={`${col.bg} ${col.text} rounded-full py-0.5 px-2 text-[10px] font-bold`}
                                 >
-                                  {tab} · {exs.length}
+                                  {categoryLabels[tab]} · {exs.length}
                                 </span>
                               );
                             })}
@@ -2527,7 +2297,7 @@ export default function App() {
                               <div
                                 className={`inline-block ${col.bg} ${col.text} rounded-[20px] py-0.5 px-3 text-xs font-bold mb-1.5`}
                               >
-                                {tab}
+                                {categoryLabels[tab]}
                               </div>
                               {exs.map((e, i) => (
                                 <div
@@ -2575,8 +2345,28 @@ export default function App() {
         {/* SECTION: Stats View */}
         {view === "stats" && (
           <div data-name="Workout-Stats-View" className="animate-fade-in">
-            <StatsView history={history} darkMode={darkMode} />
+            <StatsView history={history} darkMode={darkMode} categoryLabels={categoryLabels} />
           </div>
+        )}
+
+        {view === "settings" && (
+          <SettingsView
+            categoryLabels={categoryLabels}
+            categoryColors={COLORS}
+            onSaveCategoryLabels={saveCategoryLabels}
+            stopwatchDelay={stopwatchDelay}
+            onSaveStopwatchDelay={saveStopwatchDelay}
+            darkMode={darkMode}
+            onToggleDarkMode={() => setDarkMode((previous) => !previous)}
+            onDownloadData={downloadWorkoutData}
+            onUploadData={triggerFileUpload}
+            onInstallApp={installApp}
+            isAppInstalled={isAppInstalled}
+            installMessage={installMessage}
+            version={`${day}.${month}`}
+            siteUrl={SITE_URL}
+            siteQrUrl={SITE_QR_URL}
+          />
         )}
 
         {/* Add Exercise Modal */}
@@ -2762,7 +2552,7 @@ export default function App() {
                     >
                       Select Exercise
                       <span className={`ml-2 text-sm font-normal ${col.text}`}>
-                        {activeTab}
+                        {categoryLabels[activeTab]}
                       </span>
                     </h2>
                     <button
@@ -2983,6 +2773,7 @@ export default function App() {
           <SessionBestSetsOverlay
             bestSets={sessionBestSets}
             darkMode={darkMode}
+            categoryLabels={categoryLabels}
             onClose={() => setShowSessionStats(false)}
           />
         )}
@@ -3109,8 +2900,9 @@ export default function App() {
                       return (
                         <button
                           key={tab}
+                          title={categoryLabels[tab]}
                           onClick={() => switchTab(tab)}
-                          className={`flex-1 py-2.5 px-1 rounded-xl border-2 cursor-pointer font-bold text-[13px] transition-all duration-200 ${
+                          className={`min-w-0 flex-1 truncate py-2.5 px-1 rounded-xl border-2 cursor-pointer font-bold text-[13px] transition-all duration-200 ${
                             activeTab === tab
                               ? `${tabC.borderAccent} ${tabC.bg} ${tabC.text}`
                               : hasSelectedExercise
@@ -3120,7 +2912,7 @@ export default function App() {
                                   : "border-transparent bg-[#ECEEF4] text-[#999]"
                           }`}
                         >
-                          {tab}
+                          {categoryLabels[tab]}
                         </button>
                       );
                     })}
@@ -3128,13 +2920,16 @@ export default function App() {
                 </>
               )}
 
-              <div
+              <nav
+                aria-label="Views"
                 data-name="View-Toggle-Navigation"
                 className={`flex p-[5px] rounded-[14px] gap-[2px] ${darkMode ? DARK.bgTab : "bg-[#e0dbd6]"}`}
               >
-                {["log", "history", "stats"].map((v) => (
+                {["log", "history", "stats", "settings"].map((v) => (
                   <button
                     key={v}
+                    type="button"
+                    aria-current={view === v ? "page" : undefined}
                     onClick={() => {
                       if (v !== "log") {
                         setShowExerciseSelectModal(false);
@@ -3143,7 +2938,7 @@ export default function App() {
                       }
                       setView(v);
                     }}
-                    className={`flex-1 py-[9px] rounded-[10px] border-none cursor-pointer text-[13px] font-semibold transition-all duration-200 ${
+                    className={`min-w-0 flex-1 px-1 py-[9px] rounded-[10px] border-none cursor-pointer text-[13px] font-semibold transition-all duration-200 ${
                       view === v
                         ? darkMode
                           ? "bg-[#ffffff] text-[#000000]"
@@ -3157,10 +2952,12 @@ export default function App() {
                       ? "Log"
                       : v === "history"
                         ? "History"
-                        : "Stats"}
+                        : v === "stats"
+                          ? "Stats"
+                          : "Settings"}
                   </button>
                 ))}
-              </div>
+              </nav>
             </div>
           </div>
         )}
