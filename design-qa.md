@@ -1,4 +1,16 @@
-# Stopwatch background-resume fix
+# Synchronized stopwatch displays
+
+final result: passed
+
+The main stopwatch and countdown now read the same timestamp and update in one shared one-second display tick. The inactivity controller still owns the exact wall-time deadline and background recovery, but its quarter-second safety polling no longer changes the visible countdown independently. Activity resets update the two displays together immediately; expiry and foreground resume also take a shared snapshot. Stopwatch reset updates the shared start-time reference and restarts the display tick without extending the inactivity deadline. A first partial second after activity can retain the same whole countdown value; all subsequent countdown decrements share the stopwatch's rendered update.
+
+Browser reproduction and verification: `C:/Users/bsmik/.codex/visualizations/2026/10/10/01a123a5-2483-7483-a86d-2363b37a6396/synchronized-clocks/checks.json`. Tested the deployed pre-fix site and local implementation at 390 × 844 with isolated history/preferences. Reset inactivity partway through a stopwatch second, then recorded DOM mutation snapshots of both values. The deployed version showed three countdown decrements while elapsed seconds stayed unchanged, about half a second after its stopwatch ticks. The local fix showed three decrements, each paired with the next elapsed second in the same DOM update, with zero unsynchronized decrements. Automatic fullscreen expiry still passed. No visual styling changed.
+
+Validation: all 42 tests and production build pass. Added a deadline regression proving shared display reads do not reset or extend actual expiry. Re-ran the controlled background/focus/pageshow/suspended-callback tests and original countdown reset/Settings-delay/light/narrow/dark checks; all pass, with no browser errors. Synchronization was verified locally before deployment. Existing visual QA below remains applicable.
+
+---
+
+# Previous stopwatch background-resume fix
 
 final result: passed
 

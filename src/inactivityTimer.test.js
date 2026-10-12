@@ -130,3 +130,21 @@ test("disposing prevents callbacks and clears timers, including on late lifecycl
   assert.equal(state.expiries, 0);
   assert.equal(state.countdowns.length, 1);
 });
+
+test("reading the countdown for shared display ticks never changes the actual expiry deadline", () => {
+  const state = setup(3);
+  state.advance(350);
+  state.timer.reset();
+  assert.equal(state.timer.getRemainingSeconds(), 3);
+  state.advance(650);
+  assert.equal(state.timer.getRemainingSeconds(), 3);
+  state.advance(1000);
+  assert.equal(state.timer.getRemainingSeconds(), 2);
+  state.advance(1000);
+  assert.equal(state.timer.getRemainingSeconds(), 1);
+  assert.equal(state.expiries, 0);
+  state.advance(350);
+  assert.equal(state.timer.getRemainingSeconds(), 0);
+  assert.equal(state.expiries, 1);
+  state.timer.dispose();
+});

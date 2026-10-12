@@ -1,6 +1,6 @@
 export function createInactivityTimer({
   delaySeconds,
-  onCountdown,
+  onCountdown = () => {},
   onExpire,
   isVisible = () => true,
   now = Date.now,
@@ -46,6 +46,9 @@ export function createInactivityTimer({
   return {
     reset,
     resume,
+    getRemainingSeconds(currentTime = now()) {
+      return Math.max(0, Math.ceil((deadline - currentTime) / 1000));
+    },
     dispose() {
       disposed = true;
       cancelTimeout(timeout);

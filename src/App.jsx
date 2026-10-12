@@ -955,6 +955,8 @@ export default function App() {
   const fileInputRef = useRef(null);
   const stopwatchRef = useRef(null);
   const fullscreenStopwatchRef = useRef(false);
+  const stopwatchStartTimeRef = useRef(startTime);
+  const inactivityTimerRef = useRef(null);
   const allowRefreshRef = useRef(false);
   const hasOpenExercise = Object.values(entries).some((tab) =>
     tab.some((entry) => entry.exercise),
@@ -962,16 +964,26 @@ export default function App() {
   const shouldWarnBeforeRefresh = hasOpenExercise && !saved;
 
   const resetStopwatch = () => {
-    setStartTime(Date.now());
+    const currentTime = Date.now();
+    stopwatchStartTimeRef.current = currentTime;
+    setStartTime(currentTime);
     setElapsed(0);
   };
 
+  const updateVisibleClocks = () => {
+    const currentTime = Date.now();
+    setElapsed(Math.max(0, Math.floor((currentTime - stopwatchStartTimeRef.current) / 1000)));
+    if (inactivityTimerRef.current) {
+      setStopwatchCountdown(inactivityTimerRef.current.getRemainingSeconds(currentTime));
+    }
+  };
+
   useEffect(() => {
-    const updateElapsed = () => setElapsed(Math.max(0, Math.floor((Date.now() - startTime) / 1000)));
     const handleResume = () => {
-      if (document.visibilityState === "visible") updateElapsed();
+      if (document.visibilityState === "visible") updateVisibleClocks();
     };
-    const t = setInterval(updateElapsed, 1000);
+    // Both visible numbers are sampled and rendered together on the stopwatch's tick.
+    const t = setInterval(updateVisibleClocks, 1000);
     document.addEventListener("visibilitychange", handleResume);
     window.addEventListener("focus", handleResume);
     window.addEventListener("pageshow", handleResume);
@@ -1065,15 +1077,17 @@ export default function App() {
     }
     const inactivityTimer = createInactivityTimer({
       delaySeconds: stopwatchDelay,
-      onCountdown: setStopwatchCountdown,
       isVisible: () => document.visibilityState === "visible",
       onExpire: () => {
+        updateVisibleClocks();
         if (!fullscreenStopwatchRef.current) {
           fullscreenStopwatchRef.current = true;
           setShowFullscreenStopwatch(true);
         }
       },
     });
+    inactivityTimerRef.current = inactivityTimer;
+    updateVisibleClocks();
     const events = [
       "pointerdown",
       "mousemove",
@@ -1096,6 +1110,7 @@ export default function App() {
         // normal activity, just reset timer
       }
       inactivityTimer.reset();
+      updateVisibleClocks();
     };
 
     document.addEventListener("visibilitychange", inactivityTimer.resume);
@@ -1109,6 +1124,7 @@ export default function App() {
 
     return () => {
       inactivityTimer.dispose();
+      if (inactivityTimerRef.current === inactivityTimer) inactivityTimerRef.current = null;
       document.removeEventListener("visibilitychange", inactivityTimer.resume);
       window.removeEventListener("focus", inactivityTimer.resume);
       window.removeEventListener("pageshow", inactivityTimer.resume);
