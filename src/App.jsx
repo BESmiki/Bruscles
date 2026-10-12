@@ -4,6 +4,9 @@ import StepperControl from "./StepperControl";
 import { getStopwatchDelay, isValidStopwatchDelay, STOPWATCH_DELAY_STORAGE_KEY } from "./stopwatchSettings";
 import { getCategoryLabels, validateCategoryLabels } from "./categoryLabels";
 import { createWorkoutBackup, mergeWorkoutBackup, persistWorkoutBackup } from "./workoutBackup";
+import { getWorkoutRecommendation, getRecommendedRows, getWorkoutAverageRecords } from "./workoutRecommendation";
+import clockIcon from "./assets/clock.svg";
+import { createInactivityTimer } from "./inactivityTimer";
 
 const EXERCISES = {
   Push: [
@@ -169,6 +172,11 @@ function formatStrengthSet(row) {
   return `${weight} x ${reps}`;
 }
 
+function formatAverageRecord(recommendation) {
+  const average = Number(recommendation.average.toFixed(2));
+  return `${recommendation.weight}kg · ${recommendation.sets} ${recommendation.sets === 1 ? "set" : "sets"} · ${average} avg reps`;
+}
+
 function getBestSet(rows, category) {
   return rows.reduce((b, r) => {
     const bWeight = parseFloat(b.weight) || 0;
@@ -258,7 +266,7 @@ function getSessionBestSets(sessionData, previousHistory) {
     }
   }
 
-  return [...sessionBestByExercise.values()]
+  const singleSetRecords = [...sessionBestByExercise.values()]
     .map((item) => {
       const previous = getHistoricalBestStats(previousHistory, item.exercise);
       return {
@@ -269,12 +277,22 @@ function getSessionBestSets(sessionData, previousHistory) {
     })
     .filter(
       (item) => compareBestSets(item.best, item.previous, item.category) > 0,
-    )
-    .sort((a, b) => {
-      const categorySort = TABS.indexOf(a.category) - TABS.indexOf(b.category);
-      if (categorySort !== 0) return categorySort;
-      return a.exercise.localeCompare(b.exercise);
+    );
+  const records = new Map(singleSetRecords.map((item) => [`${item.category}:${item.exercise}`, item]));
+  for (const record of getWorkoutAverageRecords(sessionData, previousHistory)) {
+    const key = `${record.category}:${record.exercise}`;
+    records.set(key, {
+      ...records.get(key),
+      ...record,
+      averageRecord: true,
+      isFirstBest: !record.previousRecommendation,
     });
+  }
+  return [...records.values()].sort((a, b) => {
+    const categorySort = TABS.indexOf(a.category) - TABS.indexOf(b.category);
+    if (categorySort !== 0) return categorySort;
+    return a.exercise.localeCompare(b.exercise);
+  });
 }
 
 function getLastStats(history, exercise) {
@@ -292,19 +310,6 @@ function getLastStats(history, exercise) {
     }
   }
   return null;
-}
-
-function getSuggestedRowsFromLastStats(lastStats, category) {
-  if (!lastStats) return [emptySet()];
-  if (category === "Cardio") return lastStats.rows;
-
-  return lastStats.rows.map((row) => {
-    const reps = Number.parseFloat(row.reps);
-    return {
-      ...row,
-      reps: Number.isFinite(reps) ? String(reps + 1) : row.reps,
-    };
-  });
 }
 
 function NumberWheel({
@@ -691,14 +696,14 @@ function SessionBestSetsOverlay({ bestSets, darkMode, categoryLabels, onClose })
           <h1
             className={`text-[34px] leading-tight font-black mb-3 ${darkMode ? DARK.text : "text-[#4b3f3f]"}`}
           >
-            {hasBestSets ? "New best sets" : "Workout saved"}
+            {hasBestSets ? "New records" : "Workout saved"}
           </h1>
           <p
             className={`text-[15px] leading-relaxed mb-8 ${darkMode ? DARK.textSecondary : "text-[#9a7777]"}`}
           >
             {hasBestSets
-              ? `${bestSets.length} new best ${bestSets.length === 1 ? "set" : "sets"} from this workout.`
-              : "No new best sets this time. Still banked the session."}
+              ? `${bestSets.length} ${bestSets.length === 1 ? "exercise with a new record" : "exercises with new records"} from this workout.`
+              : "No new records this time. Still banked the session."}
           </p>
 
           {hasBestSets ? (
@@ -727,7 +732,7 @@ function SessionBestSetsOverlay({ bestSets, darkMode, categoryLabels, onClose })
                       <div
                         className={`shrink-0 rounded-full px-3 py-1 text-[12px] font-black ${item.isFirstBest ? "bg-[#e8efe6] text-[#6f8a68]" : "bg-[#F3E4E4] text-[#C98C8C]"}`}
                       >
-                        {item.isFirstBest ? "First best" : "New best"}
+                        {item.isFirstBest ? "First best" : item.averageRecord ? "New average best" : "New best"}
                       </div>
                     </div>
 
@@ -741,7 +746,9 @@ function SessionBestSetsOverlay({ bestSets, darkMode, categoryLabels, onClose })
                           New
                         </div>
                         <div className={`text-[16px] font-black ${col.text}`}>
-                          {item.category === "Cardio"
+                          {item.averageRecord
+                            ? formatAverageRecord(item.recommendation)
+                            : item.category === "Cardio"
                             ? formatCardioSet(item.best)
                             : formatStrengthSet(item.best)}
                         </div>
@@ -757,7 +764,11 @@ function SessionBestSetsOverlay({ bestSets, darkMode, categoryLabels, onClose })
                         <div
                           className={`text-[16px] font-black ${darkMode ? DARK.textSecondary : "text-[#8f7f7a]"}`}
                         >
-                          {item.previous
+                          {item.averageRecord
+                            ? item.previousRecommendation
+                              ? formatAverageRecord(item.previousRecommendation)
+                              : "None"
+                            : item.previous
                             ? item.category === "Cardio"
                               ? formatCardioSet(item.previous)
                               : formatStrengthSet(item.previous)
@@ -800,6 +811,7 @@ export default function App() {
       return getStopwatchDelay(null);
     }
   });
+  const [stopwatchCountdown, setStopwatchCountdown] = useState(stopwatchDelay);
   const [categoryLabels, setCategoryLabels] = useState(() => {
     try {
       return getCategoryLabels(JSON.parse(localStorage.getItem("category_labels")));
@@ -955,11 +967,20 @@ export default function App() {
   };
 
   useEffect(() => {
-    const t = setInterval(
-      () => setElapsed(Math.floor((Date.now() - startTime) / 1000)),
-      1000,
-    );
-    return () => clearInterval(t);
+    const updateElapsed = () => setElapsed(Math.max(0, Math.floor((Date.now() - startTime) / 1000)));
+    const handleResume = () => {
+      if (document.visibilityState === "visible") updateElapsed();
+    };
+    const t = setInterval(updateElapsed, 1000);
+    document.addEventListener("visibilitychange", handleResume);
+    window.addEventListener("focus", handleResume);
+    window.addEventListener("pageshow", handleResume);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener("visibilitychange", handleResume);
+      window.removeEventListener("focus", handleResume);
+      window.removeEventListener("pageshow", handleResume);
+    };
   }, [startTime]);
 
   useEffect(() => {
@@ -1039,9 +1060,20 @@ export default function App() {
   useEffect(() => {
     if (view === "settings") {
       setShowFullscreenStopwatch(false);
+      setStopwatchCountdown(stopwatchDelay);
       return;
     }
-    let inactivityTimer;
+    const inactivityTimer = createInactivityTimer({
+      delaySeconds: stopwatchDelay,
+      onCountdown: setStopwatchCountdown,
+      isVisible: () => document.visibilityState === "visible",
+      onExpire: () => {
+        if (!fullscreenStopwatchRef.current) {
+          fullscreenStopwatchRef.current = true;
+          setShowFullscreenStopwatch(true);
+        }
+      },
+    });
     const events = [
       "pointerdown",
       "mousemove",
@@ -1051,6 +1083,7 @@ export default function App() {
     ];
 
     const resetInactivityTimer = (event) => {
+      if (document.visibilityState !== "visible") return;
       const pressedFullscreenControl = event?.target?.closest?.(
         "[data-fullscreen-stopwatch-timer], [data-fullscreen-stopwatch-controls]",
       );
@@ -1062,16 +1095,12 @@ export default function App() {
       } else if (!pressedFullscreenControl) {
         // normal activity, just reset timer
       }
-      clearTimeout(inactivityTimer);
-      inactivityTimer = setTimeout(() => {
-        if (document.visibilityState === "visible") {
-          setShowFullscreenStopwatch(true);
-        }
-        // this is the time that the fullscreen stopwatch will take over
-      }, stopwatchDelay * 1000);
+      inactivityTimer.reset();
     };
 
-    resetInactivityTimer();
+    document.addEventListener("visibilitychange", inactivityTimer.resume);
+    window.addEventListener("focus", inactivityTimer.resume);
+    window.addEventListener("pageshow", inactivityTimer.resume);
     events.forEach((eventName) =>
       window.addEventListener(eventName, resetInactivityTimer, {
         passive: true,
@@ -1079,7 +1108,10 @@ export default function App() {
     );
 
     return () => {
-      clearTimeout(inactivityTimer);
+      inactivityTimer.dispose();
+      document.removeEventListener("visibilitychange", inactivityTimer.resume);
+      window.removeEventListener("focus", inactivityTimer.resume);
+      window.removeEventListener("pageshow", inactivityTimer.resume);
       events.forEach((eventName) =>
         window.removeEventListener(eventName, resetInactivityTimer),
       );
@@ -1188,8 +1220,12 @@ export default function App() {
       const tab = [...prev[activeTab]];
       let rows = tab[idx].rows;
       if (field === "exercise" && val) {
-        const lastStats = getLastStats(history, val);
-        rows = getSuggestedRowsFromLastStats(lastStats, activeTab);
+        if (activeTab === "Cardio") {
+          rows = getLastStats(history, val)?.rows || [emptySet()];
+        } else {
+          const recommendation = getWorkoutRecommendation(history, val, activeTab);
+          rows = recommendation ? getRecommendedRows(recommendation).map(withSetId) : [emptySet()];
+        }
       } else if (field === "exercise") {
         rows = [emptySet()];
       }
@@ -1658,6 +1694,19 @@ export default function App() {
               {String(elapsed % 60).padStart(2, "0")}
             </div>
             {currentUnlockedSet && (
+              <>
+              <h2
+                data-name="Fullscreen-Exercise-Name"
+                data-fullscreen-stopwatch-controls
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                  e.nativeEvent.stopImmediatePropagation();
+                }}
+                onClick={(e) => e.stopPropagation()}
+                className={`text-center text-[32px] min-[375px]:text-[36px] font-black leading-tight break-words ${darkMode ? DARK.textSecondary : "text-[#666]"}`}
+              >
+                {currentUnlockedSet.exercise}
+              </h2>
               <div
                 key={currentUnlockedSet.key}
                 data-name="Fullscreen-Current-Set"
@@ -1671,18 +1720,14 @@ export default function App() {
               >
                 <div className="min-w-0">
                   <div
-                    className={`text-[24px] font-black uppercase tracking-[0.3px] ${c.text}`}
+                    data-name="Fullscreen-Set-Heading"
+                    className={`text-center text-[36px] font-black leading-tight uppercase tracking-[0.3px] ${c.text}`}
                   >
                     {currentUnlockedSet.setLabel}
                   </div>
-                  <div
-                    className={`mt-0.5 truncate text-[14px] font-bold ${darkMode ? DARK.textSecondary : "text-[#666]"}`}
-                  >
-                    {currentUnlockedSet.exercise}
-                  </div>
-                  <div className="mt-3 flex items-center justify-between gap-4 text-[24px] font-black">
-                    <div className="flex min-w-0 items-center gap-2.5">
-                      <span className={c.text}>
+                  <div className="mt-3 flex items-center justify-between gap-2 text-[22px] min-[375px]:gap-4 min-[375px]:text-[24px] font-black">
+                    <div className="flex min-w-0 shrink-0 items-center gap-2.5">
+                      <span data-name="Fullscreen-Weight" className={`${c.text} whitespace-nowrap`}>
                         {currentUnlockedSet.primary}
                       </span>
                       {activeTab === "Cardio" && (
@@ -1702,6 +1747,7 @@ export default function App() {
                     </div>
                     {activeTab !== "Cardio" && (
                       <div
+                        data-name="Fullscreen-Reps-Control"
                         className={`ml-auto flex shrink-0 items-center overflow-hidden rounded-2xl border ${darkMode ? "border-[#2a2a2a] bg-[#171717]" : "border-[#eadcdc] bg-[#fff7f7]"}`}
                       >
                         <button
@@ -1711,13 +1757,13 @@ export default function App() {
                             isFinishingCurrentStopwatchSet ||
                             currentUnlockedSet.repsValue <= 0
                           }
-                          className={`h-14 w-14 bg-transparent text-[34px] font-black disabled:opacity-35 ${c.text}`}
+                          className={`h-14 w-10 min-[375px]:w-14 bg-transparent text-[30px] min-[375px]:text-[34px] font-black disabled:opacity-35 ${c.text}`}
                           aria-label="Decrease stopwatch reps"
                         >
                           -
                         </button>
                         <span
-                          className={`min-w-[96px] px-4 text-center text-[26px] tabular-nums ${c.text}`}
+                          className={`min-w-[80px] px-2 text-center text-[22px] min-[375px]:min-w-[96px] min-[375px]:px-4 min-[375px]:text-[26px] tabular-nums ${c.text}`}
                         >
                           {currentUnlockedSet.repsValue} reps
                         </span>
@@ -1728,7 +1774,7 @@ export default function App() {
                             isFinishingCurrentStopwatchSet ||
                             currentUnlockedSet.repsValue >= 20
                           }
-                          className={`h-14 w-14 bg-transparent text-[34px] font-black disabled:opacity-35 ${c.text}`}
+                          className={`h-14 w-10 min-[375px]:w-14 bg-transparent text-[30px] min-[375px]:text-[34px] font-black disabled:opacity-35 ${c.text}`}
                           aria-label="Increase stopwatch reps"
                         >
                           +
@@ -1746,6 +1792,7 @@ export default function App() {
                   {isFinishingCurrentStopwatchSet ? "✓" : "Finish set"}
                 </button>
               </div>
+              </>
             )}
           </div>
         </div>
@@ -1800,11 +1847,33 @@ export default function App() {
           {view !== "settings" && <div
             data-name="Stopwatch-Display"
             onClick={resetStopwatch}
-            className={`text-[72px] font-bold ${c.text} tracking-[2px] tabular-nums duration-[1000ms] ease-in-out cursor-pointer hover:opacity-70 transition-opacity`}
+            className={`text-[72px] leading-none font-bold ${c.text} tracking-[2px] tabular-nums duration-[1000ms] ease-in-out cursor-pointer hover:opacity-70 transition-opacity`}
           >
             {String(Math.floor(elapsed / 60)).padStart(2, "0")}:
             {String(elapsed % 60).padStart(2, "0")}
           </div>}
+          {view !== "settings" && !showFullscreenStopwatch && (
+            <div
+              data-name="Stopwatch-Countdown"
+              role="timer"
+              aria-label={`Fullscreen stopwatch opens in ${stopwatchCountdown} ${stopwatchCountdown === 1 ? "second" : "seconds"}`}
+              className={`mt-2 flex items-center justify-center gap-2 text-[20px] font-black leading-none tabular-nums ${c.text}`}
+            >
+              <span
+                aria-hidden="true"
+                className="h-6 w-6 shrink-0 bg-current"
+                style={{
+                  maskImage: `url("${clockIcon}")`,
+                  WebkitMaskImage: `url("${clockIcon}")`,
+                  maskSize: "contain",
+                  WebkitMaskSize: "contain",
+                  maskRepeat: "no-repeat",
+                  WebkitMaskRepeat: "no-repeat",
+                }}
+              />
+              <span data-name="Stopwatch-Countdown-Value">{stopwatchCountdown}</span>
+            </div>
+          )}
         </div>
 
         {/* SECTION: Logging View */}
@@ -1819,6 +1888,7 @@ export default function App() {
                 const lastStats = entry.exercise
                   ? getLastStats(history, entry.exercise)
                   : null;
+                const recommendation = getWorkoutRecommendation(history, entry.exercise, activeTab);
                 if (!entry.exercise) return null;
                 return (
                   <div
@@ -1885,6 +1955,19 @@ export default function App() {
                             </span>
                           ))}
                         </div>
+                        {recommendation && (
+                          <div
+                            data-name="Recommended-Set-Badge"
+                            className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-1"
+                          >
+                            <span className={`text-[11px] font-bold ${c.text} uppercase tracking-[0.5px]`}>
+                              Recommended set
+                            </span>
+                            <span className={`text-xs font-bold ${darkMode ? DARK.text : "text-[#333]"}`}>
+                              {recommendation.weight}kg {recommendation.sets} x {recommendation.reps} reps
+                            </span>
+                          </div>
+                        )}
                         <div
                           data-name="Personal-Best-Badge"
                           className="flex items-center gap-2"
@@ -2082,7 +2165,7 @@ export default function App() {
                                         value={row.reps}
                                         unit="reps"
                                         min={0}
-                                        max={20}
+                                        max={Number.MAX_SAFE_INTEGER}
                                         onChange={(nextValue) =>
                                           updateRow(
                                             eIdx,
