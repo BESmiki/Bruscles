@@ -86,6 +86,14 @@ const DARK = {
 const TABS = ["Push", "Pull", "Legs", "Cardio"];
 const SITE_URL = "https://besmiki.github.io/Bruscles/";
 const SITE_QR_URL = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=12&data=${encodeURIComponent(SITE_URL)}`;
+const CLOCK_ICON_MASK = {
+  maskImage: `url("${clockIcon}")`,
+  WebkitMaskImage: `url("${clockIcon}")`,
+  maskSize: "contain",
+  WebkitMaskSize: "contain",
+  maskRepeat: "no-repeat",
+  WebkitMaskRepeat: "no-repeat",
+};
 
 const createSetId = () =>
   globalThis.crypto?.randomUUID?.() ||
@@ -1531,7 +1539,7 @@ export default function App() {
   const petImage =
     selectedExerciseCount > 5
       ? "assets/tired.png"
-      : selectedExerciseCount >= 2
+      : selectedExerciseCount >= 3
         ? "assets/strong_animate.gif"
         : "assets/workout.gif";
   const emptyExerciseIdx = activeEntries.findIndex((entry) => !entry.exercise);
@@ -1835,16 +1843,49 @@ export default function App() {
 
         <div
           data-name="Sticky-Stopwatch-Wrapper"
-          className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isSticky ? "bg-opacity-95 shadow-md" : "pointer-events-none"} ${darkMode ? DARK.bg : "bg-[#f9f7f4]"}`}
+          className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isSticky ? "shadow-md" : "pointer-events-none"} ${darkMode ? DARK.bg : "bg-[#f9f7f4]"}`}
         >
           {isSticky && view !== "settings" && (
             <div className="max-w-[680px] mx-auto px-3">
-              <div
-                onClick={resetStopwatch}
-                className={`text-[28px] font-bold ${c.text} tracking-[2px] tabular-nums cursor-pointer hover:opacity-70 transition-opacity text-center py-2`}
-              >
-                {String(Math.floor(elapsed / 60)).padStart(2, "0")}:
-                {String(elapsed % 60).padStart(2, "0")}
+              <div data-name="Sticky-Stopwatch-Row" className="grid h-12 grid-cols-[1fr_auto_1fr] items-center">
+                <button
+                  type="button"
+                  onClick={() => setShowLogoModal(true)}
+                  aria-label="About Taji"
+                  className={`flex h-11 w-11 items-center justify-center justify-self-center rounded bg-transparent p-0 hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${c.text}`}
+                >
+                  <img
+                    data-name="Sticky-Taji"
+                    src={petImage}
+                    alt="Taji"
+                    width={32}
+                    height={32}
+                    className="h-8 w-8 object-contain"
+                  />
+                </button>
+                <button
+                  type="button"
+                  data-name="Sticky-Stopwatch-Display"
+                  aria-label="Reset stopwatch"
+                  onClick={resetStopwatch}
+                  className={`h-11 bg-transparent text-center text-[28px] leading-none font-bold ${c.text} tracking-[2px] tabular-nums cursor-pointer hover:opacity-70 transition-opacity`}
+                >
+                  {String(Math.floor(elapsed / 60)).padStart(2, "0")}:
+                  {String(elapsed % 60).padStart(2, "0")}
+                </button>
+                <div className="flex h-6 items-center justify-center justify-self-center">
+                  {!showFullscreenStopwatch && (
+                    <div
+                      data-name="Sticky-Stopwatch-Countdown"
+                      role="timer"
+                      aria-label={`Fullscreen stopwatch opens in ${stopwatchCountdown} ${stopwatchCountdown === 1 ? "second" : "seconds"}`}
+                      className={`flex items-center gap-1.5 text-[18px] leading-none font-black tabular-nums ${c.text}`}
+                    >
+                      <span aria-hidden="true" className="h-5 w-5 shrink-0 bg-current" style={CLOCK_ICON_MASK} />
+                      <span data-name="Sticky-Stopwatch-Countdown-Value">{stopwatchCountdown}</span>
+                    </div>
+                  )}
+                </div>
               </div>
               <div
                 className={`h-[1px] ${darkMode ? DARK.divider : "bg-[#e8e4e0]"}`}
@@ -1868,26 +1909,24 @@ export default function App() {
             {String(Math.floor(elapsed / 60)).padStart(2, "0")}:
             {String(elapsed % 60).padStart(2, "0")}
           </div>}
-          {view !== "settings" && !showFullscreenStopwatch && (
-            <div
-              data-name="Stopwatch-Countdown"
-              role="timer"
-              aria-label={`Fullscreen stopwatch opens in ${stopwatchCountdown} ${stopwatchCountdown === 1 ? "second" : "seconds"}`}
-              className={`mt-2 flex items-center justify-center gap-2 text-[20px] font-black leading-none tabular-nums ${c.text}`}
-            >
-              <span
-                aria-hidden="true"
-                className="h-6 w-6 shrink-0 bg-current"
-                style={{
-                  maskImage: `url("${clockIcon}")`,
-                  WebkitMaskImage: `url("${clockIcon}")`,
-                  maskSize: "contain",
-                  WebkitMaskSize: "contain",
-                  maskRepeat: "no-repeat",
-                  WebkitMaskRepeat: "no-repeat",
-                }}
-              />
-              <span data-name="Stopwatch-Countdown-Value">{stopwatchCountdown}</span>
+          {/* Preserve page height so opening fullscreen does not generate a scroll event. */}
+          {view !== "settings" && (
+            <div data-name="Stopwatch-Countdown-Slot" className="mt-2 h-6">
+              {!showFullscreenStopwatch && (
+                <div
+                  data-name="Stopwatch-Countdown"
+                  role="timer"
+                  aria-label={`Fullscreen stopwatch opens in ${stopwatchCountdown} ${stopwatchCountdown === 1 ? "second" : "seconds"}`}
+                  className={`flex items-center justify-center gap-2 text-[20px] font-black leading-none tabular-nums ${c.text}`}
+                >
+                  <span
+                    aria-hidden="true"
+                    className="h-6 w-6 shrink-0 bg-current"
+                    style={CLOCK_ICON_MASK}
+                  />
+                  <span data-name="Stopwatch-Countdown-Value">{stopwatchCountdown}</span>
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -1,4 +1,40 @@
-# Synchronized stopwatch displays
+# Sticky stopwatch mascot and countdown
+
+final result: passed
+
+The strong animation now starts at three selected exercises: zero to two use `workout.gif`, three to five use `strong_animate.gif`, and six or more use `tired.png`. Rechecked both mascot instances at the two/three boundary, all three states, synchronized countdowns, scrolled fullscreen opening and responsive layouts before release; all checks pass with no browser errors.
+
+Implemented the selected sticky-header mockup with the user's smaller-logo refinement. The sticky row shows Taji on the left, the stopwatch truly centred, and a clock/countdown number on the right. Taji is 32 × 32px (smaller than the mock's approximately 48px), contained inside a 44px button target; the row is 48px tall plus its divider. The timer retains its reset action, and the mini mascot opens the existing About dialog. Both mascot instances use the same `petImage` value, so workout/strong/tired states follow the existing exercise-count rules. Sticky/main stopwatch and countdown values share the existing state and display tick; no additional timers were introduced.
+
+Source visual truth: `C:/Users/bsmik/.codex/generated_images/01a123a5-2483-7483-a86d-2363b37a6396/exec-f78190d6-cac1-478d-91f6-8b455ab2392e.png` (1964 × 801). Implementation: `http://localhost:5174/Bruscles/`, scrolled Pull workout. Source illustrative values 00:49 and 6 differ from the live test's reset stopwatch 00:00 and 99-second configured delay; these are intentional state differences. The source crop isolates the bar at y=235, height=300, full width=1964, then scales it proportionally to 407 × 62. Implementation `light.png` is 407 × 49, from a 407 × 844 CSS viewport at scale factor 1. The shorter row and smaller mascot implement the requested refinement. No image was stretched.
+
+Evidence directory: `C:/Users/bsmik/.codex/visualizations/2026/10/10/01a123a5-2483-7483-a86d-2363b37a6396/sticky-header/`. Combined comparison `comparison.png` (834 × 62) shows the normalized source left and implementation right. Additional captures: `narrow.png` (320px viewport), `dark.png` (390px), `desktop.png` (1000px), `strong.png`, `tired.png`. The compact comparison clearly shows each element, so no extra focused crop is needed.
+
+Fidelity findings: no outstanding P0/P1/P2 issues. Existing app font/category tokens are retained: 28px bold tabular stopwatch digits and 18px bold countdown. Equal side grid columns keep the timer centred regardless of mascot or countdown width. The mascot uses the existing GIF/PNG assets without crop or distortion; all three sources were checked against the main image. The clock uses the same licensed Phosphor mask as the main countdown. Copy is numeric with no `s`. The background now stays opaque so underlying exercise text does not interfere with the compact controls, while light/dark theme tokens and the subtle divider/shadow remain consistent.
+
+Comparison history: initial captures showed the old 95%-opacity header letting exercise text bleed through behind the smaller controls (P2). Made the header background solid, recaptured, and verified the final combined comparison. Kept the logo itself at 32px while providing 44px interactive targets for the mascot and timer. No remaining visual repair is needed.
+
+Browser validation: workout/strong/tired mini-image sources exactly match the main mascot as exercise counts change; the 32px image and 48px row remain fixed. Clock/countdown values match main-page values on every captured frame and decrement in the same update. Sticky reset sets both timers to 00:00. About Taji opens the existing dialog, and Settings hides all sticky controls. Light, dark, narrow and desktop checks confirm no overlap or horizontal overflow. Fullscreen still opens while scrolled, hides both countdown displays and preserves scroll position, retaining the earlier scrolled-page fix. Console/page errors: none. Machine-readable results: `checks.json`, `clock-frames.json`, and geometry files.
+
+Validation: production build, all 42 regression tests and browser checks pass. These changes and the earlier scrolled-page fix remain local until deployed.
+
+---
+
+# Scrolled-page stopwatch fix
+
+final result: passed
+
+Cause reproduced on 13 October: the countdown row was removed from normal layout when fullscreen opened, reducing page height by 32px. While scrolled, browser scroll anchoring adjusted the position (400 → 368 or 600 → 568), generating a real scroll event. The activity handler then immediately dismissed fullscreen and reset the deadline. Reintroducing the countdown restored the scroll position, producing a cycle every time the delay expired. At the top, scroll position stayed clamped to 0 and fullscreen remained open. Before-fix trace: `C:/Users/bsmik/.codex/visualizations/2026/10/10/01a123a5-2483-7483-a86d-2363b37a6396/scroll-stopwatch/before/checks.json`.
+
+Fix: reserve the countdown's existing 24px row and 8px margin while fullscreen is open. The clock/number remain hidden in fullscreen, but the background page keeps its height and scroll position. Genuine scroll activity is still handled normally; no scroll events are suppressed or ignored. Shared display ticks, precise deadlines and background recovery are unchanged.
+
+After-fix browser checks: at 0, 400, 600 (mobile viewport emulation), and 900px near the bottom, fullscreen opens once and stays open without input. Page height remains 1749px throughout the test fixture, with no 32px scroll adjustment and no unintended dismissal. A deliberate wheel scroll still dismisses fullscreen, resets the countdown, and allows it to reopen at the new position. No browser errors. Evidence: `scroll-stopwatch/after/checks.json` and `top.png`, `scrolled.png`, `scrolled-mobile.png`, `near-bottom.png` in that directory. No physical phone was tested.
+
+Validation: all 42 tests and production build pass. Existing countdown/reset/Settings-delay/light/narrow/dark browser checks and controlled background/focus/pageshow/suspended-callback checks also pass. The shared-clock code is unchanged. This is a local fix pending deployment; visible countdown styling is preserved and its hidden layout slot prevents the reproduced automatic-scroll cycle.
+
+---
+
+# Previous synchronized stopwatch displays
 
 final result: passed
 
