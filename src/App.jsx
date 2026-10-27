@@ -869,7 +869,6 @@ export default function App() {
   const [expandedSessions, setExpandedSessions] = useState({});
   const [showLogoModal, setShowLogoModal] = useState(false);
   const [showRefreshWarningModal, setShowRefreshWarningModal] = useState(false);
-  const [isBlocked, setIsBlocked] = useState(false);
   const [deletingSets, setDeletingSets] = useState({});
   const [finishingStopwatchSet, setFinishingStopwatchSet] = useState(null);
   const [stopwatchFlash, setStopwatchFlash] = useState(false);
@@ -1109,13 +1108,12 @@ export default function App() {
       const pressedFullscreenControl = event?.target?.closest?.(
         "[data-fullscreen-stopwatch-timer], [data-fullscreen-stopwatch-controls]",
       );
-      if (!pressedFullscreenControl && fullscreenStopwatchRef.current) {
+      // Pointer/touch presses and mouse movement must leave the overlay mounted
+      // until its click handler consumes the completed gesture.
+      if (!pressedFullscreenControl && fullscreenStopwatchRef.current &&
+          (event.type === "keydown" || event.type === "scroll")) {
+        fullscreenStopwatchRef.current = false;
         setShowFullscreenStopwatch(false);
-        setIsBlocked(true);
-        // screen inactivity after stopwatch
-        setTimeout(() => setIsBlocked(false), 600);
-      } else if (!pressedFullscreenControl) {
-        // normal activity, just reset timer
       }
       inactivityTimer.reset();
       updateVisibleClocks();
@@ -1690,7 +1688,14 @@ export default function App() {
       {showFullscreenStopwatch && (
         <div
           data-name="Fullscreen-Stopwatch"
-          onClick={() => setShowFullscreenStopwatch(false)}
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            fullscreenStopwatchRef.current = false;
+            setShowFullscreenStopwatch(false);
+            inactivityTimerRef.current?.reset();
+            updateVisibleClocks();
+          }}
           className={`fixed inset-0 z-[100] flex items-center justify-center animate-fade-in px-4 pb-8 transition-colors duration-200 ${
             stopwatchFlash
               ? darkMode
@@ -1935,7 +1940,7 @@ export default function App() {
         {view === "log" && (
           <div
             data-name="Workout-Log-View"
-            className={`animate-fade-in ${isBlocked ? "pointer-events-none" : ""}`}
+            className="animate-fade-in"
           >
             {/* Subsection: List of Exercises */}
             <div data-name="Exercise-List" className="flex flex-col gap-3.5">
@@ -2965,7 +2970,7 @@ export default function App() {
         {!showLogoModal && (
           
           <div
-            className={`fixed bottom-0 left-0 right-0 z-[45] ${isBlocked ? "pointer-events-none" : ""} ${darkMode ? `${DARK.bgCard} ${DARK.borderCard}` : "bg-white border-[#E4E7EF]"} border-t`}
+            className={`fixed bottom-0 left-0 right-0 z-[45] ${darkMode ? `${DARK.bgCard} ${DARK.borderCard}` : "bg-white border-[#E4E7EF]"} border-t`}
           >
             <div className="max-w-[680px] mx-auto px-3 pt-2 pb-6">
               {view === "log" && (

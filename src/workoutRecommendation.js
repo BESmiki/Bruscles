@@ -25,11 +25,15 @@ export function getWorkoutRecommendation(history, exercise, category) {
     const heaviestRows = rows.filter((row) => row.weight === weight);
     const average = heaviestRows.reduce((total, row) => total + row.reps, 0) / heaviestRows.length;
     const candidate = { weight, sets: heaviestRows.length, reps: Math.ceil(average), average, rows: heaviestRows, date: session.date };
+    // Equal-rep sets establish a completed baseline at a new weight immediately.
+    const completedNewWeight = (!recommendation || weight > recommendation.weight) &&
+      heaviestRows.every((row) => row.reps === candidate.reps);
     const completedTarget = recommendation &&
       weight === recommendation.weight &&
       heaviestRows.length === recommendation.sets &&
       heaviestRows.every((row) => row.reps === recommendation.reps);
-    const nextTargetReps = completedTarget ? recommendation.reps + 1 : null;
+    const nextTargetReps = completedNewWeight ? candidate.reps + 1 :
+      completedTarget ? recommendation.reps + 1 : null;
 
     if (
       compareWorkoutRecommendations(candidate, recommendation) > 0 ||
@@ -37,7 +41,7 @@ export function getWorkoutRecommendation(history, exercise, category) {
     ) {
       recommendation = candidate;
     }
-    if (completedTarget) {
+    if (nextTargetReps !== null) {
       recommendation = { ...recommendation, reps: Math.max(recommendation.reps, nextTargetReps) };
     }
   }

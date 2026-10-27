@@ -29,7 +29,7 @@ test("a lower recent average never replaces a historical recommendation", () => 
 test("heavier weight always wins, even with fewer sets and reps", () => {
   const history = [session("2026-10-10", [[30, 30], [30, 30], [30, 30]]), session("2026-10-01", [[40, 1]])];
   assert.equal(recommend(history).weight, 40);
-  assert.equal(recommend(history).reps, 1);
+  assert.equal(recommend(history).reps, 2);
   assert.equal(recommend(history).sets, 1);
 });
 
@@ -81,7 +81,7 @@ test("one extra rep in a non-best set wins and raises the next target even when 
 test("a one-rep progression from 10, 10, 10 to 10, 10, 11 recommends and fills three sets of 11", () => {
   const previous = session("2026-10-01", [[40, 10], [40, 10], [40, 10]]);
   const next = session("2026-10-12", [[40, 10], [40, 10], [40, 11]]);
-  assert.equal(recommend([previous]).reps, 10);
+  assert.equal(recommend([previous]).reps, 11);
   const recommendation = recommend([next, previous]);
   assert.equal(recommendation.average, 31 / 3);
   assert.equal(recommendation.reps, 11);
@@ -167,6 +167,31 @@ test("a new heavier weight keeps priority over an advanced target at a lighter w
   const heavier = session("2026-10-03", [[41, 1]]);
   const recommendation = recommend([heavier, completed, previous]);
   assert.equal(recommendation.weight, 41);
-  assert.equal(recommendation.reps, 1);
+  assert.equal(recommendation.reps, 2);
   assert.equal(recommendation.sets, 1);
+});
+
+test("the first equal-rep workout at each weight advances immediately, including after a weight increase", () => {
+  const previous = session("2026-10-01", [[40, 10], [40, 10], [40, 10]]);
+  const heavier = session("2026-10-02", [[45, 8], [45, 8], [45, 8]]);
+  const history = [heavier, previous];
+  const original = JSON.stringify(history);
+  assert.equal(recommend([previous]).reps, 11);
+  const recommendation = recommend(history);
+  assert.equal(recommendation.average, 8);
+  assert.deepEqual(getRecommendedRows(recommendation), Array.from({ length: 3 }, () => ({ weight: "45", reps: "9", complete: false })));
+  assert.deepEqual(recommend(history), recommend([...history].reverse()));
+  assert.equal(JSON.stringify(history), original);
+
+  const repeated = session("2026-10-03", [[45, 8], [45, 8], [45, 8]]);
+  assert.equal(recommend([repeated, ...history]).reps, 9);
+  const completed = session("2026-10-04", [[45, 9], [45, 9], [45, 9]]);
+  assert.equal(recommend([completed, repeated, ...history]).reps, 10);
+  assert.deepEqual(getWorkoutAverageRecords(repeated.data, history), []);
+});
+
+test("uneven sets at a new heavier weight use the rounded average without an extra rep", () => {
+  const previous = session("2026-10-01", [[40, 10], [40, 10], [40, 10]]);
+  const heavier = session("2026-10-02", [[45, 7], [45, 8], [45, 9]]);
+  assert.equal(recommend([heavier, previous]).reps, 8);
 });
