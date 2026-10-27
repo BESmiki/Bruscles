@@ -1859,14 +1859,6 @@ export default function App() {
                   aria-label="About Taji"
                   className={`flex h-11 w-11 items-center justify-center justify-self-center rounded bg-transparent p-0 hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${c.text}`}
                 >
-                  <img
-                    data-name="Sticky-Taji"
-                    src={petImage}
-                    alt="Taji"
-                    width={32}
-                    height={32}
-                    className="h-8 w-8 object-contain"
-                  />
                 </button>
                 <button
                   type="button"
